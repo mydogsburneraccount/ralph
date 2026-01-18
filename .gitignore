@@ -1,0 +1,39 @@
+# Ignore active task directories (user-specific)
+.ralph/active/*/
+
+# Ignore secrets
+*.env
+secrets.env
+.env.*
+**/secrets/
+
+# Ignore logs
+*.log
+activity.log
+costs.log
+premium_requests.log
+
+# Ignore iteration files (state)
+.iteration
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+venv/
+.venv/
+
+# Node
+node_modules/
+package-lock.json
