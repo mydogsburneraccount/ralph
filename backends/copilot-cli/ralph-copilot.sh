@@ -7,7 +7,9 @@
 # Run this for CLI-only autonomous development using corporate-approved
 # GitHub Copilot instead of Aider + Anthropic API.
 #
-# Supports RALPH_COPILOT_MODEL env var: claude-sonnet|claude|gpt (default: claude-sonnet)
+# Supports RALPH_COPILOT_MODEL env var (default: gpt-4o for free tier)
+# Premium: claude-sonnet, claude, gpt-5
+# Free tier (0x multiplier): gpt-4o, gpt-4.1, gpt-5-mini, gpt-5-codex-mini
 # ============================================================================
 
 set -euo pipefail
@@ -20,41 +22,58 @@ SCRIPT_VERSION="1.0.0-untested"
 # ============================================================================
 
 # Model selection via environment variable
-# Based on copilot-cli research: Claude Sonnet 4.5 is default, Claude 4 and GPT-5 available
-RALPH_COPILOT_MODEL="${RALPH_COPILOT_MODEL:-claude-sonnet}"
+# Default to gpt-4o (free tier) to avoid burning premium quota
+RALPH_COPILOT_MODEL="${RALPH_COPILOT_MODEL:-gpt-4o}"
+
+# Known models with premium/free classification
 case "$RALPH_COPILOT_MODEL" in
+    # Premium models (count against quota)
     claude-sonnet|claude-sonnet-4.5)
         COPILOT_MODEL="claude-sonnet-4.5"
         IS_PREMIUM=true
-        MODEL_DISPLAY="Claude Sonnet 4.5"
+        MODEL_DISPLAY="Claude Sonnet 4.5 (premium)"
         ;;
     claude|claude-4)
         COPILOT_MODEL="claude-4"
         IS_PREMIUM=true
-        MODEL_DISPLAY="Claude 4"
+        MODEL_DISPLAY="Claude 4 (premium)"
         ;;
-    gpt|gpt-5)
+    gpt-5)
         COPILOT_MODEL="gpt-5"
         IS_PREMIUM=true
-        MODEL_DISPLAY="GPT-5"
+        MODEL_DISPLAY="GPT-5 (premium)"
         ;;
-    gpt-4.1|gpt-5-mini|gpt-4o)
-        # 0x multiplier models (free tier)
-        COPILOT_MODEL="$RALPH_COPILOT_MODEL"
+    
+    # Free tier models (0x multiplier - don't count against quota)
+    gpt-4o)
+        COPILOT_MODEL="gpt-4o"
         IS_PREMIUM=false
-        MODEL_DISPLAY="$RALPH_COPILOT_MODEL (free tier)"
+        MODEL_DISPLAY="GPT-4o (free tier)"
         ;;
+    gpt-4.1)
+        COPILOT_MODEL="gpt-4.1"
+        IS_PREMIUM=false
+        MODEL_DISPLAY="GPT-4.1 (free tier)"
+        ;;
+    gpt-5-mini)
+        COPILOT_MODEL="gpt-5-mini"
+        IS_PREMIUM=false
+        MODEL_DISPLAY="GPT-5-mini (free tier)"
+        ;;
+    gpt-5-codex-mini)
+        COPILOT_MODEL="gpt-5-codex-mini"
+        IS_PREMIUM=false
+        MODEL_DISPLAY="GPT-5-codex-mini (free tier, code-optimized)"
+        ;;
+    
+    # Unknown model - pass through with warning (flexible mode)
     *)
-        echo "❌ Invalid RALPH_COPILOT_MODEL: $RALPH_COPILOT_MODEL"
+        COPILOT_MODEL="$RALPH_COPILOT_MODEL"
+        IS_PREMIUM=true  # Assume premium for safety (will log correctly)
+        MODEL_DISPLAY="$RALPH_COPILOT_MODEL (unknown - check 'copilot /model')"
+        echo "⚠️  Unknown model: $RALPH_COPILOT_MODEL"
+        echo "   Will attempt to use it. Run 'copilot /model' to see available models."
         echo ""
-        echo "Premium models (count against quota):"
-        echo "  claude-sonnet  - Claude Sonnet 4.5 (default, best quality)"
-        echo "  claude         - Claude 4"
-        echo "  gpt            - GPT-5"
-        echo ""
-        echo "Free tier models (0x multiplier):"
-        echo "  gpt-4.1, gpt-5-mini, gpt-4o"
-        exit 1
         ;;
 esac
 
@@ -85,7 +104,17 @@ if [ -z "$TASK_NAME" ]; then
     echo "Usage: $0 <task-name>"
     echo ""
     echo "Environment variables:"
-    echo "  RALPH_COPILOT_MODEL=claude-sonnet|claude|gpt (default: claude-sonnet)"
+    echo "  RALPH_COPILOT_MODEL=<model> (default: gpt-4o)"
+    echo ""
+    echo "  Premium models (count against quota):"
+    echo "    claude-sonnet, claude, gpt-5"
+    echo ""
+    echo "  Free tier models (0x multiplier, recommended):"
+    echo "    gpt-4o          - Good all-rounder (default)"
+    echo "    gpt-5-codex-mini - Best for code tasks"
+    echo "    gpt-4.1, gpt-5-mini"
+    echo ""
+    echo "  Any other model name will be passed through to copilot CLI."
     echo "  RALPH_COPILOT_FALLBACK=true|false (default: false)"
     echo "  RALPH_COPILOT_AUTO_APPROVE=true|false (default: true)"
     echo "  RALPH_COPILOT_USE_ACP=true|false (default: false, experimental)"
@@ -93,7 +122,10 @@ if [ -z "$TASK_NAME" ]; then
     echo "Available tasks:"
     ls -1 "$WORKSPACE/.ralph/active/" 2>/dev/null || echo "  (no active tasks)"
     echo ""
-    echo "Example: RALPH_COPILOT_MODEL=claude $0 my-task"
+    echo "Examples:"
+    echo "  $0 my-task                                    # Uses default (gpt-4o)"
+    echo "  RALPH_COPILOT_MODEL=gpt-5-codex-mini $0 my-task  # Code-optimized free model"
+    echo "  RALPH_COPILOT_MODEL=claude-sonnet $0 my-task     # Premium model (uses quota)"
     exit 1
 fi
 
