@@ -1,0 +1,16 @@
+# Code owners for ralph repository
+
+# Default owner for everything
+* @mydogsburneraccount
+
+# Backend-specific owners
+/backends/cursor-agent/ @mydogsburneraccount
+/backends/copilot-cli/ @mydogsburneraccount
+/backends/aider/ @mydogsburneraccount
+
+# Core functionality requires careful review
+/core/ @mydogsburneraccount
+
+# Documentation can have more lenient review
+/core/docs/ @mydogsburneraccount
+*.md @mydogsburneraccount

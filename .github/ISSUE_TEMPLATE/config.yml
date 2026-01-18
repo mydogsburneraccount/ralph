@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Documentation
+    url: https://github.com/mydogsburneraccount/ralph/tree/main/core/docs
+    about: Check the documentation before creating an issue
+  - name: Quick Reference
+    url: https://github.com/mydogsburneraccount/ralph/blob/main/core/docs/QUICKREF.md
+    about: Quick reference guide for common tasks

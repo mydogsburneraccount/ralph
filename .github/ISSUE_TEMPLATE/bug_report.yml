@@ -1,0 +1,70 @@
+name: Bug Report
+description: Report a bug or issue with Ralph
+title: "[Bug]: "
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a bug! Please fill out the sections below.
+
+  - type: dropdown
+    id: backend
+    attributes:
+      label: Which backend?
+      description: Which Ralph backend are you using?
+      options:
+        - cursor-agent
+        - copilot-cli
+        - aider
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Bug Description
+      description: What happened?
+      placeholder: A clear description of the bug
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to Reproduce
+      description: How can we reproduce this?
+      placeholder: |
+        1. Run command...
+        2. See error...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: What did you expect to happen?
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant Logs
+      description: Please paste any relevant logs
+      render: shell
+
+  - type: input
+    id: os
+    attributes:
+      label: Operating System
+      placeholder: e.g., Ubuntu 22.04 on WSL, macOS 14.0
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional Context
+      description: Any other context about the problem

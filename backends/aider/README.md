@@ -140,6 +140,7 @@ See `RALPH_MAC_QUICKSTART.md` for Mac-specific setup.
 - API costs apply (pay-per-use)
 - Best for personal projects
 - Not suitable for corporate use without approval
+- **⚠️ UNTESTED**: This backend has not been validated with a live Anthropic API key. The code is based on working patterns but needs testing before production use.
 
 ---
 

@@ -66,8 +66,9 @@ Ralph supports multiple AI backends to suit different environments and requireme
 - ❌ NOT for corporate use
 - ❌ Data leaves company
 - ❌ Requires API key
+- ❌ Untested (no API key for validation yet)
 
-**Best for**: Personal projects, SSH environments
+**Best for**: Personal projects, SSH environments (once tested)
 
 [→ Setup Guide](./aider/README.md)
 
