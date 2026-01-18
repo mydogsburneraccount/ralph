@@ -1,5 +1,5 @@
 #!/bin/bash
-# Ralph Secret Manager
+# Ralph Secret Manage
 # Securely manages secrets for Ralph automation
 #
 # Two modes:
@@ -9,8 +9,18 @@
 set -euo pipefail
 
 SECRETS_FILE="${HOME}/.ralph/secrets.env"
+# Default to flippanet (not localhost) since Vault runs on flippanet server
 VAULT_ADDR="${VAULT_ADDR:-http://flippanet:8201}"
-VAULT_TOKEN="${VAULT_TOKEN:-flipparr-root-token}"
+
+# SECURITY: Token must be provided via environment variable or ~/.ralph/vault-token
+# Never hardcode tokens. Get token from file if not in env.
+if [ -z "${VAULT_TOKEN:-}" ]; then
+    if [ -f "${HOME}/.ralph/vault-token" ]; then
+        VAULT_TOKEN=$(cat "${HOME}/.ralph/vault-token")
+    else
+        VAULT_TOKEN=""
+    fi
+fi
 
 # Check if Vault is available
 vault_available() {
@@ -42,16 +52,41 @@ get_secret_local() {
 # Get secret from Vault
 get_secret_vault() {
     local secret_path="$1"
+    local field="${2:-}"  # Optional: specific field to extract
     
-    local value=$(curl -sf -H "X-Vault-Token: $VAULT_TOKEN" \
-        "$VAULT_ADDR/v1/secret/data/$secret_path" \
-        | jq -r '.data.data.value' 2>/dev/null)
+    if [ -z "$VAULT_TOKEN" ]; then
+        echo "Error: No Vault token configured." >&2
+        echo "Set VAULT_TOKEN env var or create ~/.ralph/vault-token" >&2
+        return 1
+    fi
+    
+    local response=$(curl -sf -H "X-Vault-Token: $VAULT_TOKEN" \
+        "$VAULT_ADDR/v1/secret/data/$secret_path" 2>/dev/null)
+    
+    if [ -z "$response" ]; then
+        echo "Error: Could not retrieve secret: $secret_path" >&2
+        echo "Check: token valid, path correct, Vault unsealed" >&2
+        return 1
+    fi
+    
+    # If field specified, get that field; otherwise get 'value' or show all data
+    if [ -n "$field" ]; then
+        local value=$(echo "$response" | jq -r ".data.data.${field}" 2>/dev/null)
+    else
+        # Try 'value' field first (for simple secrets)
+        local value=$(echo "$response" | jq -r '.data.data.value' 2>/dev/null)
+        # If no 'value' field, show all fields as JSON
+        if [ "$value" = "null" ]; then
+            value=$(echo "$response" | jq -r '.data.data' 2>/dev/null)
+        fi
+    fi
     
     if [ "$value" != "null" ] && [ -n "$value" ]; then
         echo "$value"
         return 0
     else
         echo "Error: Could not retrieve secret: $secret_path" >&2
+        echo "Check: token valid, path correct, Vault unsealed" >&2
         return 1
     fi
 }
@@ -88,7 +123,7 @@ EOF
 init_secrets() {
     if [ -f "$SECRETS_FILE" ]; then
         echo "Secrets file already exists: $SECRETS_FILE"
-        read -p "Overwrite? (y/N): " -n 1 -r
+        read -p "Overwrite? (y/N): " -n 1 -
         echo
         if [[ ! $REPLY =~ ^[Yy]$ ]]; then
             exit 0
@@ -104,7 +139,7 @@ init_secrets() {
 
 # GitHub Personal Access Token
 # Create at: https://github.com/settings/tokens
-# Scopes needed: repo, read:org, user
+# Scopes needed: repo, read:org, use
 export GITHUB_TOKEN=""
 
 # Anthropic API Key (for Aider, if using)
@@ -151,12 +186,14 @@ list_secrets() {
 case "${1:-}" in
     get)
         if [ -z "${2:-}" ]; then
-            echo "Usage: $0 get <key>"
+            echo "Usage: $0 get <key> [field]"
+            echo "  key: secret path (e.g., flippanet/protonvpn)"
+            echo "  field: optional specific field (e.g., username)"
             exit 1
         fi
         
         if vault_available; then
-            get_secret_vault "$2"
+            get_secret_vault "$2" "${3:-}"
         else
             get_secret_local "$2"
         fi
@@ -196,6 +233,12 @@ case "${1:-}" in
         if vault_available; then
             echo "Mode: Vault (Flippanet)"
             echo "Vault: $VAULT_ADDR"
+            if [ -n "$VAULT_TOKEN" ]; then
+                echo "Token: ✓ Configured (${#VAULT_TOKEN} chars)"
+            else
+                echo "Token: ✗ Not configured"
+                echo "  Set VAULT_TOKEN env var or create ~/.ralph/vault-token"
+            fi
         else
             echo "Mode: Local file"
             echo "File: $SECRETS_FILE"
