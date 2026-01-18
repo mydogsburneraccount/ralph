@@ -143,6 +143,6 @@ See `RALPH_MAC_QUICKSTART.md` for Mac-specific setup.
 
 ---
 
-**Status**: Production-ready
+**Status**: Untested (requires Anthropic API key for validation)
 **Maintained**: Active
 **Version**: 2.0

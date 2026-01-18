@@ -8,7 +8,7 @@ Ralph Wiggum is an autonomous development framework that enables AI agents to wo
 
 ```bash
 # 1. Clone the repo
-git clone https://github.com/your-org/ethan-dev-tools.git
+git clone https://github.com/mydogsburneraccount/ethan-dev-tools.git
 cd ethan-dev-tools/ralph
 
 # 2. Choose your backend
@@ -43,11 +43,11 @@ ralph/
 
 ## 🤖 Backends Comparison
 
-| Backend | Best For | Requires | Corporate OK? | Cost |
-|---------|----------|----------|---------------|------|
-| **cursor-agent** | Personal dev, Cursor users | Cursor IDE license | ⚠️ Maybe | Included in license |
-| **copilot-cli** | Corporate environments | GitHub Copilot license | ✅ Yes | Included in license |
-| **aider** | Personal projects, SSH/CLI | Anthropic API key | ❌ No | Pay-per-use |
+| Backend | Best For | Requires | Corporate OK? | Status |
+|---------|----------|----------|---------------|--------|
+| **cursor-agent** | Personal dev, Cursor users | Cursor IDE license | ⚠️ Maybe | ✅ Tested |
+| **copilot-cli** | Corporate environments | GitHub Copilot license | ✅ Yes | ⚠️ Untested |
+| **aider** | Personal projects, SSH/CLI | Anthropic API key | ❌ No | ⚠️ Untested |
 
 ### Cursor Agent (Recommended for Personal Use)
 - Tightly integrated with Cursor IDE

@@ -137,9 +137,9 @@ All backends share the same task format and core scripts. To switch:
 
 Each backend has its own maintainer and status:
 
-- **cursor-agent**: Production, actively maintained
-- **copilot-cli**: Experimental, needs testing
-- **aider**: Production, actively maintained
+- **cursor-agent**: ✅ Production, actively maintained, tested
+- **copilot-cli**: ⚠️ Untested, needs Copilot license validation
+- **aider**: ⚠️ Untested, needs Anthropic API key validation
 
 ## Questions?
 
