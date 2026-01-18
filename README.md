@@ -8,8 +8,8 @@ Ralph Wiggum is an autonomous development framework that enables AI agents to wo
 
 ```bash
 # 1. Clone the repo
-git clone https://github.com/mydogsburneraccount/ethan-dev-tools.git
-cd ethan-dev-tools/ralph
+git clone https://github.com/mydogsburneraccount/ralph.git
+cd ralph
 
 # 2. Choose your backend
 cd backends/cursor-agent    # Cursor IDE (recommended for personal use)
