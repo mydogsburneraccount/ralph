@@ -9,7 +9,7 @@
 **Last Updated**: 2026-01-18
 **Iteration**: 1
 **Task**: Plex Stability Optimization for Multi-User Load
-**Status**: Phase 0 Worker Verification Complete - Starting Phase 1
+**Status**: COMPLETE - All phases finished
 
 ---
 
@@ -116,6 +116,7 @@ Optimize Plex Media Server on flippanet for reliability under concurrent load:
 - [x] Phase 6: Docker Resource Limits - Plex OK, qBittorrent issue identified
 - [x] Phase 7: Tautulli Monitoring - Connected, notifications manual
 - [x] Phase 8: Apply Changes and Restart - Plex restarted, settings verified
+- [x] Phase 9: Create Stability Documentation - `_data/PLEX_STABILITY.md` created
 
 ---
 
@@ -328,6 +329,41 @@ Create separate task `qbittorrent-memory-2026-01-XX` to:
 - Plex API responding at `http://localhost:32400/identity`
 - machineIdentifier: `9e8c53e840b93feefc35b69ec594f9479d8b0422`
 - Only benign error: `libusb_init failed` (documented as ignorable)
+
+---
+
+## Phase 9: Documentation Complete (Iteration 1)
+
+### Created Files
+- `_data/PLEX_STABILITY.md` - Comprehensive stability documentation
+
+### Documentation Contents
+- Summary of all changes applied
+- Architecture context and resource contention points
+- Known issues (GPU passthrough, qBittorrent memory)
+- Monitoring recommendations (Tautulli, health checks)
+- Rollback instructions
+- Load testing suggestions
+
+---
+
+## Task Summary
+
+### Changes Applied to Plex
+1. **TranscoderQuality**: 3 → 0 (prefer speed)
+2. **BackgroundQueueIdlePaused**: Added (pause during playback)
+3. **ScheduledLibraryUpdateInterval**: Added (1 hour)
+4. **RelayEnabled**: Added (disabled, use Tailscale)
+
+### Key Discoveries
+- GPU not passed through to container (CPU-only transcoding)
+- qBittorrent using 28GB RAM (45%) - root cause of swap exhaustion
+- Tautulli monitoring active but no notification agents
+
+### Recommendations for Future
+1. Enable GPU passthrough for hardware transcoding
+2. Investigate qBittorrent memory usage (separate task)
+3. Configure Tautulli notification agents (manual)
 
 ---
 
