@@ -86,12 +86,12 @@ See progress.md for:
 
 **Create tier classification in progress.md:**
 
-- [ ] Identify Tier 1 (Critical): Services that must stay up (Plex, Gluetun, Tailscale)
-- [ ] Identify Tier 2 (Core Media): Download/media management (qBittorrent, ARR stack)
-- [ ] Identify Tier 3 (Support): Monitoring, management, optional services
-- [ ] Document dependencies: Which containers depend on others (e.g., qBittorrent → Gluetun)
-- [ ] Document priority: Rank containers by importance
-- [ ] Create tier table in progress.md: Container name, tier, role, dependencies
+- [x] Identify Tier 1 (Critical): plex, gluetun, tailscale
+- [x] Identify Tier 2 (Core Media): qbittorrent, sonarr, radarr, prowlarr, listenarr, bazarr, whisparr, jellyseerr, audiobookshelf
+- [x] Identify Tier 3 (Support): tautulli, recyclarr, flaresolverr, searxng, open-webui, ollama-bridge, mcpo, edge-tts, port-updater
+- [x] Document dependencies: gluetun←qbittorrent←ARR stack, prowlarr←flaresolverr, supabase-db←auth←kong
+- [x] Document priority: 6-tier priority ranking (1=critical, 6=rarely used)
+- [x] Create tier table in progress.md: 4 tier tables with container, role, dependencies, priority
 
 ---
 
@@ -99,46 +99,46 @@ See progress.md for:
 
 **For each container, define limits based on:**
 
-- [ ] Calculate total allocatable resources: Leave 8GB RAM and 1 CPU thread for system/overhead
-- [ ] Define Tier 1 limits in progress.md: Generous limits for critical services
-- [ ] Define Tier 2 limits in progress.md: Moderate limits based on observed usage
-- [ ] Define Tier 3 limits in progress.md: Conservative limits to prevent waste
-- [ ] Calculate totals: Sum all mem_reservation values, ensure < 56GB (leaving 8GB for system)
-- [ ] Verify CPU allocation: Ensure total cpus limits allow for contention (can exceed 8 if using soft limits)
-- [ ] Document calculation rationale in progress.md: Why each limit was chosen
+- [x] Calculate total allocatable resources: 54GB RAM, 7 CPU threads (after 8GB/1 thread reserved)
+- [x] Define Tier 1 limits in progress.md: plex 8g, gluetun 512m, tailscale 256m
+- [x] Define Tier 2 limits in progress.md: qbittorrent 2g (HARD CAP), ARR stack 256m-1g
+- [x] Define Tier 3 limits in progress.md: 64m-1g based on current usage + headroom
+- [x] Calculate totals: mem_reservation=4.55GB (92% headroom), mem_limit=20.66GB
+- [x] Verify CPU allocation: 16.45 cpus total (oversubscribed OK - soft limits, won't all max simultaneously)
+- [x] Document calculation rationale in progress.md: Each container has rationale column
 
 ---
 
 ### Phase 4: Create Docker Compose Recommendations
 
-- [ ] Create recommendations file: Write `_data/DOCKER_RESOURCE_LIMITS.md` with per-container resource limits
-- [ ] File includes current usage: Document Phase 1 baseline for comparison
-- [ ] File includes tier classification: Explain priority system
-- [ ] File includes compose snippets: Ready-to-use YAML for each container with mem_limit, mem_reservation, cpus
-- [ ] File includes total allocation: Summary of reserved vs limit totals
-- [ ] Verify file structure: `grep -E "mem_limit|mem_reservation|cpus" _data/DOCKER_RESOURCE_LIMITS.md | wc -l` returns >30 (10+ containers × 3 settings)
+- [x] Create recommendations file: Write `_data/DOCKER_RESOURCE_LIMITS.md` with per-container resource limits
+- [x] File includes current usage: Document Phase 1 baseline for comparison
+- [x] File includes tier classification: Explain priority system (4 tiers)
+- [x] File includes compose snippets: Ready-to-use YAML for each container with mem_limit, mem_reservation, cpus
+- [x] File includes total allocation: Summary of reserved vs limit totals (4.55GB/20.66GB)
+- [x] Verify file structure: `grep -E "mem_limit|mem_reservation|cpus" _data/DOCKER_RESOURCE_LIMITS.md | wc -l` returns 33 (>30 ✓)
 
 ---
 
 ### Phase 5: Document Implementation Plan
 
-- [ ] Add implementation section to recommendations file: Step-by-step process
-- [ ] Include staggered rollout: Which containers to apply limits to first (start with Tier 3, then Tier 2, then Tier 1)
-- [ ] Include testing procedure: How to verify each container after applying limits
-- [ ] Include backup instructions: How to backup compose file before changes
-- [ ] Include monitoring commands: How to check resource usage after applying limits
-- [ ] Document implementation in progress.md: Summary of rollout strategy
+- [x] Add implementation section to recommendations file: Step-by-step process (4 phases)
+- [x] Include staggered rollout: Phase A (Tier 3) → Phase B (Tier 4) → Phase C (Tier 2) → Phase D (Tier 1)
+- [x] Include testing procedure: OOM check, docker stats, swap monitoring, health check
+- [x] Include backup instructions: cp command with date-based naming
+- [x] Include monitoring commands: dmesg, docker stats, free -h, docker ps
+- [x] Document implementation in progress.md: Summary included below
 
 ---
 
 ### Phase 6: Create Rollback Documentation
 
-- [ ] Add rollback section to recommendations file: How to remove limits
-- [ ] Include per-container rollback: How to remove limits from single container without affecting others
-- [ ] Include full rollback: How to restore backup compose file
-- [ ] Include verification: How to check limits are removed
-- [ ] Update progress.md: Mark Phase 6 complete with file location
-- [ ] Verify documentation completeness: `grep -E "Rollback|backup|restore" _data/DOCKER_RESOURCE_LIMITS.md` returns multiple matches
+- [x] Add rollback section to recommendations file: "Rollback Plan" section
+- [x] Include per-container rollback: "Quick Rollback: Remove Limits from Single Container"
+- [x] Include full rollback: "Full Rollback: Restore Backup"
+- [x] Include verification: "Verify Limits Removed" with docker inspect command
+- [x] Update progress.md: Marked complete with file location `_data/DOCKER_RESOURCE_LIMITS.md`
+- [x] Verify documentation completeness: `grep -E "Rollback|backup|restore"` returns 6 matches (>0 ✓)
 
 ---
 
