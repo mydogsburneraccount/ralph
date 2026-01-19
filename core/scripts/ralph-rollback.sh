@@ -172,5 +172,5 @@ echo ""
 TASK_DIR="$WORKSPACE/.ralph/active/$TASK_NAME"
 if [ -d "$TASK_DIR" ]; then
     echo -e "${YELLOW}Note: Task directory still exists: $TASK_DIR${NC}"
-    echo "Run this to archive it: ./.cursor/ralph-scripts/ralph-task-manager.sh archive $TASK_NAME"
+    echo "Run this to archive it: ./.ralph/core/scripts/ralph-task-manager.sh archive $TASK_NAME"
 fi

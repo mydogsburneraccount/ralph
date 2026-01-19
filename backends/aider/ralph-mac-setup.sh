@@ -184,13 +184,14 @@ echo "────────────────────────�
 echo ""
 
 # Make scripts executable
-if [[ -d "${WORKSPACE}/.cursor/ralph-scripts" ]]; then
+if [[ -d "${WORKSPACE}/.ralph/core/scripts" ]]; then
     echo "Making Ralph scripts executable..."
-    chmod +x "${WORKSPACE}/.cursor/ralph-scripts"/*.sh
+    chmod +x "${WORKSPACE}/.ralph/core/scripts"/*.sh 2>/dev/null || true
+    chmod +x "${WORKSPACE}/.ralph/backends"/*/*.sh 2>/dev/null || true
     echo "✅ Scripts are executable"
 else
-    echo "⚠️  .cursor/ralph-scripts directory not found"
-    echo "   Make sure you've transferred the Ralph scripts to this workspace"
+    echo "⚠️  .ralph/core/scripts directory not found"
+    echo "   Make sure Ralph module is installed in this workspace"
 fi
 
 echo ""
@@ -285,13 +286,13 @@ echo "   git config user.name \"Your Name\""
 echo "   git config user.email \"your@email.com\""
 echo ""
 echo "3. Run Ralph autonomous mode:"
-echo "   ./.cursor/ralph-scripts/ralph-autonomous.sh"
+echo "   ./.ralph/backends/cursor-agent/ralph-autonomous.sh"
 echo ""
 echo "4. Or test with single iteration first:"
 echo "   cursor-agent -p \"Read RALPH_TASK.md and work on first criterion\""
 echo ""
 echo "For help, see:"
-echo "  - .ralph/docs/SETUP.md"
-echo "  - .ralph/docs/QUICKREF.md"
-echo "  - .ralph/docs/RALPH_MAC_QUICKSTART.md"
+echo "  - .ralph/core/docs/INDEX.md"
+echo "  - .ralph/core/docs/QUICKREF.md"
+echo "  - .ralph/backends/aider/RALPH_MAC_QUICKSTART.md"
 echo ""

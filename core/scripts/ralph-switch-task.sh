@@ -24,10 +24,15 @@ echo "Current active task:"
 head -3 "$WORKSPACE/RALPH_TASK.md" | grep "^#" | head -1
 echo ""
 
-# Count progress
-UNCHECKED=$(grep -c '\[ \]' "$WORKSPACE/RALPH_TASK.md" || echo "0")
-CHECKED=$(grep -c '\[x\]' "$WORKSPACE/RALPH_TASK.md" || echo "0")
-ITERATION=$(cat "$RALPH_DIR/.iteration" 2>/dev/null || echo "0")
+# Count progress (strip CRLF for Windows line endings)
+UNCHECKED=$(tr -d '\r' < "$WORKSPACE/RALPH_TASK.md" | grep -c '\[ \]' || echo "0")
+CHECKED=$(tr -d '\r' < "$WORKSPACE/RALPH_TASK.md" | grep -c '\[x\]' || echo "0")
+UNCHECKED=$(echo "$UNCHECKED" | tr -d '[:space:]')
+CHECKED=$(echo "$CHECKED" | tr -d '[:space:]')
+UNCHECKED=${UNCHECKED:-0}
+CHECKED=${CHECKED:-0}
+ITERATION=$(tr -d '\r' < "$RALPH_DIR/.iteration" 2>/dev/null | tr -d '[:space:]' || echo "0")
+ITERATION=${ITERATION:-0}
 echo "Progress: $CHECKED / $((UNCHECKED + CHECKED)) criteria complete"
 echo "Iteration: $ITERATION"
 echo ""
@@ -109,7 +114,7 @@ cat > "$RALPH_DIR/progress.md" <<'EOF'
 # Ralph Progress Log
 
 > **Auto-updated by the agent after each iteration**
-> 
+>
 > This file tracks what has been accomplished. Each iteration reads this first
 > to understand what's already done, then continues from there.
 
@@ -143,7 +148,9 @@ echo ""
 # Show new task info
 echo "New active task:"
 head -3 "$WORKSPACE/RALPH_TASK.md" | grep "^#" | head -1
-TOTAL_NEW=$(grep -c '\[ \]' "$WORKSPACE/RALPH_TASK.md" || echo "0")
+TOTAL_NEW=$(tr -d '\r' < "$WORKSPACE/RALPH_TASK.md" | grep -c '\[ \]' || echo "0")
+TOTAL_NEW=$(echo "$TOTAL_NEW" | tr -d '[:space:]')
+TOTAL_NEW=${TOTAL_NEW:-0}
 echo "Total criteria: $TOTAL_NEW"
 echo ""
 
@@ -151,5 +158,5 @@ echo "╔═══════════════════════�
 echo "║     Task Switch Complete                           ║"
 echo "╚════════════════════════════════════════════════════╝"
 echo ""
-echo "Ready to run: ./.cursor/ralph-scripts/ralph-autonomous.sh"
+echo "Ready to run: ./.ralph/backends/cursor-agent/ralph-autonomous.sh"
 echo ""

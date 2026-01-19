@@ -33,7 +33,6 @@ fi
 
 # Create directories
 mkdir -p .ralph
-mkdir -p .cursor/ralph-scripts
 
 # =============================================================================
 # CREATE RALPH_TASK.md IF NOT EXISTS
@@ -146,13 +145,8 @@ echo "0" > .ralph/.iteration
 # INSTALL SCRIPTS
 # =============================================================================
 
-echo "📦 Installing scripts..."
-
-# Copy scripts
-cp "$SKILL_DIR/scripts/"*.sh .cursor/ralph-scripts/ 2>/dev/null || true
-chmod +x .cursor/ralph-scripts/*.sh 2>/dev/null || true
-
-echo "✓ Scripts installed to .cursor/ralph-scripts/"
+echo "📦 Scripts available in .ralph/core/scripts/ and .ralph/backends/"
+echo "✓ No script installation needed (scripts are in .ralph/ module)"
 
 # =============================================================================
 # UPDATE .gitignore
@@ -192,8 +186,8 @@ echo "  • .ralph/errors.log    - Failure log (parser updates this)"
 echo ""
 echo "Next steps:"
 echo "  1. Edit RALPH_TASK.md to define your task and criteria"
-echo "  2. Run: ./scripts/ralph-loop.sh"
-echo "     (or: .cursor/ralph-scripts/ralph-loop.sh)"
+echo "  2. Run: .ralph/backends/cursor-agent/ralph-autonomous.sh"
+echo "     (or use ralph-task-manager.sh for task management)"
 echo ""
 echo "The agent will work autonomously, rotating context as needed."
 echo "Monitor progress: tail -f .ralph/activity.log"
