@@ -57,6 +57,11 @@ A "Sign" is a documented lesson learned. Format:
 - **Instruction**: Run `docker buildx use agent-builder` first, then use `--cache-from` and `--cache-to` flags with `$HOME/.docker-cache/[project]` for 90%+ faster rebuilds. Or use `_scripts/docker_build_cached.py`.
 - **Added after**: Iteration 2 - Docker optimization achieved 95.4% speedup on Listenarr builds
 
+### Sign: Verify healthcheck tools exist in container
+- **Trigger**: Adding healthcheck to a new container service
+- **Instruction**: Check what tools are available inside the container before using curl/wget. Minimal Python images often lack curl. Use Python urllib as fallback: `["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen(\\\"http://127.0.0.1:PORT\\\")\""]`
+- **Added after**: Iteration 1 (kapowarr-integration) - curl not found in mrcas/kapowarr image, had to use Python healthcheck
+
 ---
 
 ## How to Add Signs
