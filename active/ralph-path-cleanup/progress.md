@@ -77,11 +77,15 @@
 
 ### Iteration 2
 - [x] Phase 0: Pre-Work Checkpoint complete
-- [ ] Phase 1: Audit documented (counts verified)
-- [ ] Phase 2: Fix core scripts
-- [ ] Phase 3: Fix backend scripts
-- [ ] Phase 4: Fix documentation
-- [ ] Phase 6: Final verification
+- [x] Phase 1: Audit documented (counts verified)
+- [x] Phase 2: Fix core scripts (init-ralph.sh, ralph-rollback.sh, ralph-switch-task.sh)
+- [x] Phase 3: Fix backend scripts (ralph-mac-setup.sh)
+- [x] Phase 4: Fix documentation (14 files updated)
+- [x] Phase 6: Final verification - 0 broken refs remaining
+
+### Commits Made
+1. `ralph(ralph-path-cleanup): fix .cursor/ralph-scripts references in core and backend scripts`
+2. `ralph(ralph-path-cleanup): fix .ralph/scripts/ and .ralph/docs/ references in documentation`
 
 ---
 
