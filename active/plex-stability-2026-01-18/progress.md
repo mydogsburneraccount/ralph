@@ -111,6 +111,7 @@ Optimize Plex Media Server on flippanet for reliability under concurrent load:
 - [x] Phase 1: Assess Current Plex Configuration - Assessment complete
 - [x] Phase 2: Configure Transcoder for Stability - Settings applied
 - [x] Phase 3: Optimize Library Scan Settings - Already optimal + interval added
+- [x] Phase 4: Network and Streaming Settings - Relay disabled
 
 ---
 
@@ -200,6 +201,26 @@ This is a significant performance issue. Hardware transcoding requires:
 - `BackgroundQueueIdlePaused=1` (from Phase 2) already pauses ALL background tasks during active playback
 - This includes thumbnail generation, intro detection, chapter markers
 - No need to separately configure each task's schedule
+
+---
+
+## Phase 4: Network Optimization (Iteration 1)
+
+### Current State (Already Good)
+- `allowedNetworks="192.168.110.0/24,100.0.0.0/8,172.16.0.0/12"` includes:
+  - Local LAN (192.168.110.0/24)
+  - Tailscale mesh VPN (100.0.0.0/8)
+  - Docker internal (172.16.0.0/12)
+- `secureConnections="2"` - Secure connections preferred
+
+### Changes Applied
+- Added `RelayEnabled="0"` - Disables Plex Relay
+
+### Why Disable Relay
+- Tailscale provides direct mesh VPN connections
+- Relay adds latency by bouncing through Plex servers
+- With Relay disabled, all connections go directly via Tailscale
+- More stable and faster connections
 
 ---
 

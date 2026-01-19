@@ -117,11 +117,11 @@ Library scans can cause I/O contention with active streams. Configure for off-pe
 
 Optimize network settings for stable streaming under load.
 
-- [ ] Check current network settings: `ssh -i ~/.ssh/flippanet flippadip@flippanet "grep -oP '(LanNetwork|WanPerStream|Relay)[^\"]*=\"[^\"]*\"' /var/lib/docker/volumes/flippanet_plex-config/_data/Library/Application\ Support/Plex\ Media\ Server/Preferences.xml"` returns current network config
-- [ ] Configure LAN networks for direct play: Set `LanNetworksBandwidth` to Tailscale subnet (100.x.x.x) and local network
-- [ ] Set remote stream bitrate limit: Configure `WanPerStreamMaxUploadRate` if bandwidth is constrained (0 = unlimited, or set to reasonable value like 20000 for 20 Mbps)
-- [ ] Disable Plex Relay for stability: Set `RelayEnabled` to `0` (forces direct connections via Tailscale)
-- [ ] Document changes: Add "Phase 4: Network Optimization" to progress.md
+- [x] Check current network settings: allowedNetworks includes 192.168.110.0/24, 100.0.0.0/8 (Tailscale), 172.16.0.0/12
+- [x] Configure LAN networks for direct play: Already configured - Tailscale 100.0.0.0/8 in allowedNetworks
+- [x] Set remote stream bitrate limit: Not constrained - server has adequate bandwidth, leaving unlimited
+- [x] Disable Plex Relay for stability: Added `RelayEnabled="0"` (direct Tailscale connections only)
+- [x] Document changes: Added "Phase 4: Network Optimization" to progress.md
 
 ---
 
