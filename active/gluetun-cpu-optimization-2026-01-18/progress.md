@@ -124,6 +124,153 @@ Investigate and optimize Gluetun VPN container CPU usage on flippanet:
 
 ---
 
+## Iteration 1 Log
+
+### Phase 1: Assess Current Gluetun State
+
+**Baseline Metrics (2026-01-19 ~02:30 CST):**
+- **CPU**: 55.72%
+- **Memory**: 27.32 MiB
+- **Container ID**: c90972f2de6c
+- **Uptime**: ~35 minutes
+- **Image**: qmcgaw/gluetun:latest
+
+**VPN Status:**
+- **Provider**: ProtonVPN
+- **Protocol**: OpenVPN UDP
+- **Server**: node-uk-38.protonvpn.net (84.20.17.197:1194)
+- **VPN IP**: 159.26.106.134 (UK/London)
+- **Port Forwarding**: Enabled, port 58738
+- **Connection**: Healthy, "Initialization Sequence Completed"
+
+**Relevant Environment Variables:**
+- `LOG_LEVEL=info` ← **Optimization target** (reduce to `error`)
+- `DOT=off` ✓ (DNS over TLS disabled at Gluetun level)
+- `DNS_UPSTREAM_RESOLVER_TYPE=DoT` ← **Optimization target** (using DoT for DNS queries)
+- `DNS_SERVER=on` ✓
+- `DNS_UPSTREAM_RESOLVERS=cloudflare` ✓
+- `DNS_CACHING=on` ✓
+- `OPENVPN_VERBOSITY=1` ✓ (low)
+- `HEALTH_RESTART_VPN=on` ✓
+- `BLOCK_MALICIOUS=on` ← **Minor overhead**
+- `VPN_PORT_FORWARDING=on` ✓ (needed for qBittorrent)
+
+**Initial Analysis:**
+The main CPU overhead suspects are:
+1. `LOG_LEVEL=info` - verbose logging
+2. `DNS_UPSTREAM_RESOLVER_TYPE=DoT` - TLS encryption for every DNS query
+3. Possible health check frequency (need to investigate in Phase 2)
+
+---
+
+### Phase 2: Analyze Gluetun Configuration
+
+**Log Analysis (500 lines):**
+- No excessive events or spam patterns
+- No reconnect loops or VPN failures
+- Clean startup sequence
+- Warning: `DOT=off` is deprecated, should use `DNS_SERVER` env var instead
+- Container has been restarted a few times (user testing)
+
+**High-Frequency Events:**
+- DNS queries: None logged (DNS forwarder disabled)
+- Keepalive pings: Not logged (normal OpenVPN behavior)
+- Health checks: Not logged at `info` level
+
+**Port Forwarding:**
+- **Status**: Enabled
+- **Port**: 58738
+- **File**: /gluetun/forwarded_port (verified)
+
+**DNS Resolution:**
+- **Server**: 1.1.1.1 (Cloudflare plaintext)
+- **Test**: `nslookup google.com` completed in ~800ms ✓
+
+**Problematic Patterns Identified:**
+1. `LOG_LEVEL=info` - Generates verbose startup/operation logs
+2. `DOT=off` deprecated warning - Should update to `DNS_SERVER=off`
+3. `BLOCK_MALICIOUS=on` - Minor overhead for DNS block lists
+
+**Key Finding:**
+The logs are clean - the high CPU is NOT from excessive logging or reconnect loops.
+The CPU overhead is likely from:
+- OpenVPN encryption (necessary)
+- Keepalive traffic processing
+- Health check ICMP pings (1.1.1.1, 8.8.8.8) - frequent but low overhead
+
+---
+
+### Phase 3: Identify CPU Usage Patterns
+
+**CPU Samples Over 30 Seconds:**
+| Sample | CPU % | Memory |
+|--------|-------|--------|
+| 1 | 63.14% | 27.64MiB |
+| 2 | 43.11% | 27.83MiB |
+| 3 | 60.10% | 27.64MiB |
+| 4 | 57.10% | 27.64MiB |
+| 5 | 57.72% | 27.49MiB |
+| 6 | 61.13% | 27.42MiB |
+
+- **Min**: 43.11%
+- **Max**: 63.14%
+- **Average**: ~57%
+
+**Process Analysis:**
+```
+PID   USER     TIME  COMMAND
+    1 root      0:01 /gluetun-entrypoint
+   50 nonrootu 15:09 openvpn2.6 --config /etc/openvpn/target.ovpn
+```
+
+**Key Finding**: OpenVPN process (PID 50) has consumed **15:09** of CPU time.
+This is the main CPU consumer, not Gluetun's entrypoint or other services.
+
+**Log Verbosity:**
+- `LOG_LEVEL=info` ← Can reduce to `error`
+- `OPENVPN_VERBOSITY=1` ← Already low (0-11 scale)
+
+**Root Cause Analysis:**
+The high CPU (~55-60%) is coming from OpenVPN itself, not from Gluetun's orchestration.
+This could be due to:
+1. OpenVPN keepalive processing (ping every 10-60 seconds)
+2. TLS/encryption overhead for all traffic through the tunnel
+3. Packet inspection/firewall rules
+4. Possible busy-polling behavior in OpenVPN
+
+**Optimization Potential:**
+Limited - OpenVPN encryption is necessary. Can only optimize:
+1. Reduce Gluetun log level (`LOG_LEVEL=error`)
+2. Disable unnecessary services (HTTP control server logging, version checks)
+3. Consider if this CPU usage is acceptable for VPN security
+
+---
+
+### Phase 4: Apply Optimizations
+
+**Backup Created:**
+- File: `docker-compose-portable.yml.backup-20260118`
+- Location: `/home/flippadip/flippanet/`
+
+**Changes Documented:**
+1. `LOG_LEVEL=error` - Reduce logging from `info` (expected: 2-5% reduction)
+2. `HTTP_CONTROL_SERVER_LOG=off` - Disable control server logging (expected: 1-2% reduction)
+3. `VERSION_INFORMATION=off` - Disable version check on startup
+4. Remove `DOT=off` - Deprecated, remove deprecation warning
+
+**Instructions File Created:**
+- File: `_data/GLUETUN_CPU_OPTIMIZATION.md`
+- Contains: Env var changes, WireGuard alternative, rollback instructions, verification commands
+
+**Key Finding:**
+OpenVPN is the CPU consumer, not Gluetun services. Expected improvement: **3-7%** reduction.
+For significant reduction (<15%), would need to switch to WireGuard protocol.
+
+**MANUAL STEP REQUIRED:**
+User must edit `docker-compose-portable.yml` to apply changes per instructions file.
+
+---
+
 ## Next Steps
 
 1. Phase 1: Assess Current Gluetun State

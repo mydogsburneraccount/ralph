@@ -75,48 +75,48 @@ See progress.md for:
 
 ### Phase 1: Assess Current Gluetun State
 
-- [ ] Get current container stats: `docker stats gluetun --no-stream` shows CPU % and memory usage
-- [ ] Document baseline in progress.md: CPU (%), Memory (MB), Container ID, uptime
-- [ ] Check container image: `docker inspect gluetun --format='{{.Config.Image}}'` returns image name and tag
-- [ ] Get current environment vars: `docker inspect gluetun --format='{{range .Config.Env}}{{println .}}{{end}}'` lists all env vars
-- [ ] Document relevant env vars in progress.md: VPN provider, log level, DNS settings, port forwarding
-- [ ] Check VPN status: `docker logs gluetun --tail 50` shows connection state
-- [ ] Document VPN server and protocol in progress.md
+- [x] Get current container stats: `docker stats gluetun --no-stream` shows CPU % and memory usage (55.72%, 27.32MiB)
+- [x] Document baseline in progress.md: CPU (%), Memory (MB), Container ID, uptime
+- [x] Check container image: `docker inspect gluetun --format='{{.Config.Image}}'` returns qmcgaw/gluetun:latest
+- [x] Get current environment vars: `docker inspect gluetun --format='{{range .Config.Env}}{{println .}}{{end}}'` lists all env vars
+- [x] Document relevant env vars in progress.md: VPN provider, log level, DNS settings, port forwarding
+- [x] Check VPN status: `docker logs gluetun --tail 50` shows "Initialization Sequence Completed"
+- [x] Document VPN server and protocol in progress.md (ProtonVPN, OpenVPN UDP, node-uk-38)
 
 ---
 
 ### Phase 2: Analyze Gluetun Configuration
 
-- [ ] Check recent logs for patterns: `docker logs gluetun --tail 500` output saved to progress.md analysis
-- [ ] Identify high-frequency events: Count DNS queries, keepalive pings, health checks in logs
-- [ ] Check port forwarding: `docker exec gluetun cat /gluetun/forwarded_port` returns port or fails
-- [ ] Document port forwarding state in progress.md: enabled/disabled, port number if enabled
-- [ ] Check DNS resolution: `docker exec gluetun nslookup google.com` succeeds without delays
-- [ ] Identify problematic patterns in progress.md: excessive logging, frequent reconnects, health check spam
+- [x] Check recent logs for patterns: `docker logs gluetun --tail 500` - clean, no spam/reconnects
+- [x] Identify high-frequency events: None found - DNS disabled, health checks not logged
+- [x] Check port forwarding: `docker exec gluetun cat /gluetun/forwarded_port` returns 58738
+- [x] Document port forwarding state in progress.md: enabled, port 58738
+- [x] Check DNS resolution: `docker exec gluetun nslookup google.com` completed in ~800ms
+- [x] Identify problematic patterns in progress.md: LOG_LEVEL=info, deprecated DOT warning
 
 ---
 
 ### Phase 3: Identify CPU Usage Patterns
 
-- [ ] Sample CPU over 30 seconds: `for i in {1..6}; do docker stats gluetun --no-stream; sleep 5; done` shows consistent pattern
-- [ ] Document CPU samples in progress.md: min, max, average
-- [ ] Check process list in container: `docker exec gluetun ps aux` shows running processes
-- [ ] Identify CPU-heavy processes in progress.md: openvpn, health checks, DNS, other
-- [ ] Check log verbosity: `docker inspect gluetun | grep LOG_LEVEL` returns current level
-- [ ] Document current log level in progress.md: likely "info" or "debug"
+- [x] Sample CPU over 30 seconds: 43-63% CPU, average ~57%
+- [x] Document CPU samples in progress.md: min 43.11%, max 63.14%, avg ~57%
+- [x] Check process list in container: `/gluetun-entrypoint` (0:01), `openvpn2.6` (15:09)
+- [x] Identify CPU-heavy processes in progress.md: OpenVPN is the main CPU consumer
+- [x] Check log verbosity: `LOG_LEVEL=info`, `OPENVPN_VERBOSITY=1`
+- [x] Document current log level in progress.md: `info` (can reduce to `error`)
 
 ---
 
 ### Phase 4: Apply Optimizations
 
 **Backup compose file first:**
-- [ ] Create backup: `ssh -i ~/.ssh/flippanet flippadip@flippanet "cp /home/flippadip/flippanet/docker-compose-portable.yml /home/flippadip/flippanet/docker-compose-portable.yml.backup-$(date +%Y%m%d)"`
+- [x] Create backup: `docker-compose-portable.yml.backup-20260118` created
 
 **Apply CPU reduction changes (via environment variables in compose file):**
-- [ ] Document changes to make in progress.md: Based on Phase 2/3 analysis (e.g., LOG_LEVEL=error, DOT=off, health check interval)
-- [ ] Note: Actual compose file editing is MANUAL step (see Manual Steps section)
-- [ ] Create instructions file: Write `_data/GLUETUN_CPU_OPTIMIZATION.md` with specific env var changes and rationale
-- [ ] Verify instructions file: `cat _data/GLUETUN_CPU_OPTIMIZATION.md` contains env vars and expected CPU reduction
+- [x] Document changes to make in progress.md: LOG_LEVEL=error, HTTP_CONTROL_SERVER_LOG=off, VERSION_INFORMATION=off, remove DOT=off
+- [x] Note: Actual compose file editing is MANUAL step (see Manual Steps section)
+- [x] Create instructions file: `_data/GLUETUN_CPU_OPTIMIZATION.md` with env var changes, WireGuard alternative, and rollback
+- [x] Verify instructions file: `grep -E "CPU|LOG_LEVEL|Rollback"` returns all three terms
 
 ---
 
