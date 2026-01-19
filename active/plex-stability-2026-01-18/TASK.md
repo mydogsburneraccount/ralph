@@ -159,9 +159,9 @@ Set resource limits to prevent Plex from starving other containers during peak t
 
 Ensure Tautulli is properly monitoring Plex for load awareness.
 
-- [ ] Verify Tautulli connection to Plex: `ssh -i ~/.ssh/flippanet flippadip@flippanet "docker logs tautulli 2>&1 | tail -30 | grep -iE 'plex|connect'"` shows connection status
-- [ ] Check Tautulli notification settings: `ssh -i ~/.ssh/flippanet flippadip@flippanet "curl -s 'http://localhost:8181/api/v2?apikey=\$(grep -oP \"api_key = \\K[^\\n]+\" /var/lib/docker/volumes/flippanet_tautulli-config/_data/config.ini 2>/dev/null || echo \"NOKEY\")&cmd=get_settings' | jq '.response.data.Monitoring' 2>/dev/null || echo 'API unavailable'"` shows monitoring config
-- [ ] Document monitoring setup: Add "Phase 7: Tautulli Configuration" to progress.md
+- [x] Verify Tautulli connection to Plex: Connected to "flippanet" (192.168.110.149:32400, v1.42.2.10156)
+- [x] Check Tautulli notification settings: 0 notification agents (manual setup - see Manual Steps)
+- [x] Document monitoring setup: Added "Phase 7: Tautulli Configuration" to progress.md
 
 ---
 
