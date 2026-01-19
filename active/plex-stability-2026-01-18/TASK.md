@@ -144,10 +144,12 @@ Optimize Plex database for faster queries under load.
 
 Set resource limits to prevent Plex from starving other containers during peak transcoding.
 
-- [ ] Check current container resource usage: `ssh -i ~/.ssh/flippanet flippadip@flippanet "docker stats plex --no-stream --format 'table {{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}\t{{.MemPerc}}'"` shows current usage
-- [ ] Review docker-compose for resource limits: Check if `deploy.resources.limits` or `mem_limit` is set
-- [ ] Create docker-compose override for Plex limits (if needed): Document recommended limits based on system resources
-- [ ] Document recommendations: Add "Phase 6: Docker Resource Configuration" to progress.md
+- [x] Check current container resource usage: Plex=0.47% CPU/135MB RAM; **qBittorrent=28GB RAM (45%!)**
+- [x] Review docker-compose for resource limits: No limits set on Plex (Memory=0, NanoCpus=0)
+- [x] Create docker-compose override for Plex limits (if needed): Not needed - Plex isn't the problem
+- [x] Document recommendations: Added "Phase 6: Docker Resource Configuration" to progress.md
+
+**Critical Finding**: qBittorrent using 28GB RAM is causing swap exhaustion, not Plex. Recommend separate task to investigate qBittorrent memory usage.
 
 ---
 

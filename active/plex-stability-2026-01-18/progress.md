@@ -113,6 +113,7 @@ Optimize Plex Media Server on flippanet for reliability under concurrent load:
 - [x] Phase 3: Optimize Library Scan Settings - Already optimal + interval added
 - [x] Phase 4: Network and Streaming Settings - Relay disabled
 - [x] Phase 5: Database and Cache Optimization - Healthy, no action needed
+- [x] Phase 6: Docker Resource Limits - Plex OK, qBittorrent issue identified
 
 ---
 
@@ -245,6 +246,41 @@ Plex is maintaining automatic backups:
 - Auto-maintenance is running correctly
 - Manual optimization risks corruption if run during activity
 - The other stability changes (background pause, scan intervals) reduce DB load anyway
+
+---
+
+## Phase 6: Docker Resource Limits (Iteration 1)
+
+### Current Container Resource Usage
+
+| Container | CPU % | Memory | Mem % | Status |
+|-----------|-------|--------|-------|--------|
+| **plex** | 0.47% | 135MB | 0.21% | ✅ Healthy |
+| **qbittorrent** | 22% | **28.27GB** | **45%** | ⚠️ **PROBLEM** |
+| **gluetun** | 47% | 23MB | 0.04% | ⚠️ High CPU |
+| tailscale | 5.3% | 59MB | 0.09% | OK |
+| sonarr | 0.1% | 170MB | 0.27% | OK |
+| Other containers | <1% | <500MB | <1% | OK |
+
+### Analysis
+
+**Root Cause of Swap Exhaustion**: qBittorrent is using 28GB RAM (45% of 62GB total), NOT Plex. This explains the 8GB/8GB swap usage observed in Phase 1.
+
+### Decision: No Plex Resource Limits
+
+Setting memory/CPU limits on Plex would be counterproductive:
+- Plex uses minimal resources when idle
+- During transcoding, Plex NEEDS CPU and memory headroom
+- Limiting Plex would cause transcoding failures under load
+- The problem is qBittorrent, not Plex
+
+### Recommendation for Future Task
+
+Create separate task `qbittorrent-memory-2026-01-XX` to:
+1. Investigate why qBittorrent uses 28GB RAM
+2. Check libtorrent settings (memory allocation, cache)
+3. Set appropriate memory limits in docker-compose
+4. Monitor gluetun CPU usage (47% seems high)
 
 ---
 
