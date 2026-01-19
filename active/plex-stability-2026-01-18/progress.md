@@ -115,6 +115,7 @@ Optimize Plex Media Server on flippanet for reliability under concurrent load:
 - [x] Phase 5: Database and Cache Optimization - Healthy, no action needed
 - [x] Phase 6: Docker Resource Limits - Plex OK, qBittorrent issue identified
 - [x] Phase 7: Tautulli Monitoring - Connected, notifications manual
+- [x] Phase 8: Apply Changes and Restart - Plex restarted, settings verified
 
 ---
 
@@ -303,6 +304,30 @@ Create separate task `qbittorrent-memory-2026-01-XX` to:
 - Buffer/transcode event logging
 - User activity tracking
 - Playback notifications (when agents configured)
+
+---
+
+## Phase 8: Restart Verification (Iteration 1)
+
+### Restart Sequence
+1. `docker stop plex` - Graceful shutdown (9 seconds)
+2. Wait 5 seconds for cleanup
+3. `docker start plex` - Container started
+4. Wait 15 seconds for initialization
+5. Verify health via `/identity` endpoint
+
+### Post-Restart Verification
+| Setting | Expected | Actual | Status |
+|---------|----------|--------|--------|
+| TranscoderQuality | 0 | 0 | ✅ |
+| BackgroundQueueIdlePaused | 1 | 1 | ✅ |
+| ScheduledLibraryUpdateInterval | 3600 | 3600 | ✅ |
+| RelayEnabled | 0 | 0 | ✅ |
+
+### Health Check
+- Plex API responding at `http://localhost:32400/identity`
+- machineIdentifier: `9e8c53e840b93feefc35b69ec594f9479d8b0422`
+- Only benign error: `libusb_init failed` (documented as ignorable)
 
 ---
 

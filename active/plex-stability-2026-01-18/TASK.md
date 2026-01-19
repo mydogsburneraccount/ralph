@@ -171,11 +171,17 @@ Ensure Tautulli is properly monitoring Plex for load awareness.
 
 Apply all configuration changes and verify stability.
 
-- [ ] Stop Plex container cleanly: `ssh -i ~/.ssh/flippanet flippadip@flippanet "docker stop plex && sleep 5 && docker ps | grep plex || echo 'Plex stopped'"` shows container stopped
-- [ ] Start Plex container: `ssh -i ~/.ssh/flippanet flippadip@flippanet "docker start plex && sleep 10 && docker ps | grep plex"` shows container running
-- [ ] Verify Plex is healthy: `ssh -i ~/.ssh/flippanet flippadip@flippanet "curl -s 'http://localhost:32400/identity' | grep -oP '<MediaContainer[^>]*machineIdentifier=\"[^\"]+\"'"` returns Plex identity
-- [ ] Check for startup errors: `ssh -i ~/.ssh/flippanet flippadip@flippanet "docker logs plex 2>&1 | tail -50 | grep -iE 'error|fail|warn'"` shows no critical errors
-- [ ] Document restart: Add "Phase 8: Restart Verification" to progress.md
+- [x] Stop Plex container cleanly: Stopped successfully (9s graceful shutdown)
+- [x] Start Plex container: Started, Up 15 seconds
+- [x] Verify Plex is healthy: Returns machineIdentifier `9e8c53e840b93feefc35b69ec594f9479d8b0422`
+- [x] Check for startup errors: Only `libusb_init failed` (benign, documented as ignorable)
+- [x] Document restart: Added "Phase 8: Restart Verification" to progress.md
+
+**Verified Settings Post-Restart:**
+- TranscoderQuality="0" ✓
+- BackgroundQueueIdlePaused="1" ✓
+- ScheduledLibraryUpdateInterval="3600" ✓
+- RelayEnabled="0" ✓
 
 ---
 
