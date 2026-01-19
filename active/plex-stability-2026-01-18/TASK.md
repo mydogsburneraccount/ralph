@@ -131,10 +131,10 @@ Optimize network settings for stable streaming under load.
 
 Optimize Plex database for faster queries under load.
 
-- [ ] Check database size: `ssh -i ~/.ssh/flippanet flippadip@flippanet "ls -lh /var/lib/docker/volumes/flippanet_plex-config/_data/Library/Application\ Support/Plex\ Media\ Server/Plug-in\ Support/Databases/*.db 2>/dev/null"` shows database files
-- [ ] Optimize Plex database: `ssh -i ~/.ssh/flippanet flippadip@flippanet "docker exec plex /usr/lib/plexmediaserver/Plex\ Media\ Server --optimize-database"` or equivalent cleanup
-- [ ] Verify database optimization: Check that database file sizes are reasonable and no corruption
-- [ ] Document changes: Add "Phase 5: Database Optimization" to progress.md
+- [x] Check database size: library.db=41MB, blobs.db=47MB - both reasonable sizes
+- [x] Optimize Plex database: Not needed - auto-maintenance running (dated backups from Jan 7, 10, 13, 16)
+- [x] Verify database optimization: Database sizes healthy, no corruption indicators
+- [x] Document changes: Added "Phase 5: Database Optimization" to progress.md
 
 ---
 

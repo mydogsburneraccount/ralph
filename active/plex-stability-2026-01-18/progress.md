@@ -112,6 +112,7 @@ Optimize Plex Media Server on flippanet for reliability under concurrent load:
 - [x] Phase 2: Configure Transcoder for Stability - Settings applied
 - [x] Phase 3: Optimize Library Scan Settings - Already optimal + interval added
 - [x] Phase 4: Network and Streaming Settings - Relay disabled
+- [x] Phase 5: Database and Cache Optimization - Healthy, no action needed
 
 ---
 
@@ -221,6 +222,29 @@ This is a significant performance issue. Hardware transcoding requires:
 - Relay adds latency by bouncing through Plex servers
 - With Relay disabled, all connections go directly via Tailscale
 - More stable and faster connections
+
+---
+
+## Phase 5: Database Optimization (Iteration 1)
+
+### Database Status
+| File | Size | Status |
+|------|------|--------|
+| `com.plexapp.plugins.library.db` | 41MB | Healthy |
+| `com.plexapp.plugins.library.blobs.db` | 47MB | Healthy |
+
+### Auto-Maintenance Active
+Plex is maintaining automatic backups:
+- `*.db-2026-01-07` (oldest)
+- `*.db-2026-01-10`
+- `*.db-2026-01-13`
+- `*.db-2026-01-16` (most recent)
+
+### Decision: No Manual Optimization
+- Database sizes are reasonable (not bloated)
+- Auto-maintenance is running correctly
+- Manual optimization risks corruption if run during activity
+- The other stability changes (background pause, scan intervals) reduce DB load anyway
 
 ---
 
