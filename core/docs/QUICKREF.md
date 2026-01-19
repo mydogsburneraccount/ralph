@@ -6,20 +6,20 @@
 # One-time setup
 wsl
 cd /mnt/c/Users/Ethan/Code/cursor_local_workspace
-./.ralph/scripts/ralph-wsl-setup.sh
+./.ralph/backends/cursor-agent/ralph-wsl-setup.sh
 cursor-agent login
 
 # Install base toolset (optional but recommended)
-./.ralph/scripts/ralph-base-toolset.sh
+./.ralph/core/scripts/ralph-base-toolset.sh
 
 # Create a task
-./.ralph/scripts/ralph-task-manager.sh create my-task
+./.ralph/core/scripts/ralph-task-manager.sh create my-task
 
 # Edit your task
 nano .ralph/active/my-task/TASK.md
 
 # Run autonomous loop (will check/install task dependencies)
-./.ralph/scripts/ralph-autonomous.sh my-task
+./.ralph/backends/cursor-agent/ralph-autonomous.sh my-task
 ```
 
 ---
@@ -72,7 +72,7 @@ Constraints: [your constraints]
 | `.ralph/active/<task>/progress.md` | What's been done |
 | `.ralph/active/<task>/.iteration` | Current iteration |
 | `.ralph/guardrails.md` | Global lessons learned |
-| `.ralph/docs/` | Ralph documentation |
+| `.ralph/core/docs/` | Ralph documentation |
 
 ---
 
@@ -80,14 +80,14 @@ Constraints: [your constraints]
 
 ```bash
 # Setup
-./.ralph/scripts/ralph-wsl-setup.sh
+./.ralph/backends/cursor-agent/ralph-wsl-setup.sh
 
 # Install base development tools (Python, Node.js, Docker, etc.)
 # Uses pipx for Python CLI tools, follows WSL best practices
-sudo ./.ralph/scripts/ralph-base-toolset.sh
+sudo ./.ralph/core/scripts/ralph-base-toolset.sh
 
 # Test base toolset installation
-./.ralph/scripts/test-base-toolset.sh
+./.ralph/core/scripts/test-base-toolset.sh
 
 # Install additional dependencies (created by ralph-base-toolset.sh)
 ralph-install-dependency system jq          # System package
@@ -96,19 +96,19 @@ ralph-install-dependency pipx aider-chat    # Python CLI tool
 ralph-install-dependency npm typescript     # npm package
 
 # List tasks
-./.ralph/scripts/ralph-task-manager.sh list
+./.ralph/core/scripts/ralph-task-manager.sh list
 
 # Create task
-./.ralph/scripts/ralph-task-manager.sh create <name>
+./.ralph/core/scripts/ralph-task-manager.sh create <name>
 
 # Run (auto-checks dependencies)
-./.ralph/scripts/ralph-autonomous.sh <task-name>
+./.ralph/backends/cursor-agent/ralph-autonomous.sh <task-name>
 
 # Run with auto-install dependencies
-RALPH_AUTO_INSTALL=true ./.ralph/scripts/ralph-autonomous.sh <task-name>
+RALPH_AUTO_INSTALL=true ./.ralph/backends/cursor-agent/ralph-autonomous.sh <task-name>
 
 # Run skipping dependency checks
-RALPH_SKIP_DEPS=true ./.ralph/scripts/ralph-autonomous.sh <task-name>
+RALPH_SKIP_DEPS=true ./.ralph/backends/cursor-agent/ralph-autonomous.sh <task-name>
 
 # Check progress
 cat .ralph/active/<task-name>/progress.md
@@ -117,10 +117,10 @@ cat .ralph/active/<task-name>/progress.md
 git log --oneline --grep="ralph(<task-name>):"
 
 # Archive completed task
-./.ralph/scripts/ralph-task-manager.sh archive <task-name>
+./.ralph/core/scripts/ralph-task-manager.sh archive <task-name>
 
 # Rollback a task (delete branch and changes)
-./.ralph/scripts/ralph-rollback.sh <task-name>
+./.ralph/core/scripts/ralph-rollback.sh <task-name>
 ```
 
 ---
@@ -135,11 +135,11 @@ pipx install aider-chat
 export ANTHROPIC_API_KEY="sk-ant-api03-..."
 
 # Run with default model (Sonnet)
-./.ralph/scripts/ralph-aider.sh my-task
+./.ralph/backends/aider/ralph-aider.sh my-task
 
 # Run with specific model
-RALPH_MODEL=haiku ./.ralph/scripts/ralph-aider.sh my-task
-RALPH_MODEL=opus ./.ralph/scripts/ralph-aider.sh my-task
+RALPH_MODEL=haiku ./.ralph/backends/aider/ralph-aider.sh my-task
+RALPH_MODEL=opus ./.ralph/backends/aider/ralph-aider.sh my-task
 ```
 
 **Model options**:
@@ -165,11 +165,11 @@ For corporate environments with GitHub Copilot licenses:
 npm install -g @github/copilot
 
 # Run with Copilot backend
-./.ralph/scripts/ralph-copilot.sh my-task
+./.ralph/backends/copilot-cli/ralph-copilot.sh my-task
 
 # Run with specific model
-RALPH_COPILOT_MODEL=claude ./.ralph/scripts/ralph-copilot.sh my-task
-RALPH_COPILOT_MODEL=gpt ./.ralph/scripts/ralph-copilot.sh my-task
+RALPH_COPILOT_MODEL=claude ./.ralph/backends/copilot-cli/ralph-copilot.sh my-task
+RALPH_COPILOT_MODEL=gpt ./.ralph/backends/copilot-cli/ralph-copilot.sh my-task
 ```
 
 **Model options**:
@@ -187,7 +187,7 @@ RALPH_COPILOT_MODEL=gpt ./.ralph/scripts/ralph-copilot.sh my-task
 - ✅ Enterprise audit logging available
 - ✅ No additional security approvals needed
 
-**Full docs**: `.ralph/docs/COPILOT_BACKEND.md` and `.ralph/docs/COPILOT_TESTING.md`
+**Full docs**: `.ralph/backends/copilot-cli/COPILOT_BACKEND.md` and `.ralph/backends/copilot-cli/COPILOT_TESTING.md`
 
 ---
 
@@ -197,7 +197,7 @@ If a Ralph task went wrong and you want to discard all changes:
 
 ```bash
 # Roll back a specific task
-./.ralph/scripts/ralph-rollback.sh my-task
+./.ralph/core/scripts/ralph-rollback.sh my-task
 
 # What it does:
 # 1. Finds the ralph-my-task-* branch
@@ -294,7 +294,7 @@ Agent changes to `COMPLETE` when done. See RALPH_RULES.md.
 - ✅ Works overnight
 - ✅ State in git, not LLM memory
 
-**Full docs**: `.ralph/docs/SETUP.md` and `.ralph/docs/INDEX.md`
+**Full docs**: `.ralph/core/docs/INDEX.md` and `.ralph/docs/INDEX.md`
 
 ---
 

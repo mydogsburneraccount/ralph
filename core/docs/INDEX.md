@@ -34,7 +34,7 @@
 |------|---------|--------|
 | **[ANTIPATTERNS.md](ANTIPATTERNS.md)** | ⚠️ **CRITICAL**: Forbidden task patterns | ✅ Multi-task |
 | **[RALPH_RULES.md](RALPH_RULES.md)** | Task writing guidance, best practices | ✅ Generic |
-| **[SCRIPTS.md](SCRIPTS.md)** | Script reference for `.ralph/scripts/` | ✅ Multi-task |
+| **[SCRIPTS.md](SCRIPTS.md)** | Script reference for `.ralph/core/scripts/` and backends | ✅ Multi-task |
 
 ### Reference
 
@@ -131,7 +131,7 @@
 
 ## 🔧 Scripts
 
-All scripts are in `.ralph/scripts/` - see [SCRIPTS.md](SCRIPTS.md) for full reference.
+Scripts are in `.ralph/core/scripts/` (core) and `.ralph/backends/*/` (backend-specific) - see [SCRIPTS.md](SCRIPTS.md) for full reference.
 
 ### Core Scripts
 
@@ -177,7 +177,7 @@ while not_done:
 │       ├── progress.md
 │       └── .iteration
 ├── completed/                ← Archived tasks
-├── docs/                     ← These docs
+├── core/docs/                ← These docs
 ├── guardrails.md            ← Global lessons learned
 └── README.md
 ```
@@ -195,19 +195,19 @@ while not_done:
 
 ```bash
 # Create task
-./.ralph/scripts/ralph-task-manager.sh create my-task
+./.ralph/core/scripts/ralph-task-manager.sh create my-task
 
 # Edit task
 nano .ralph/active/my-task/TASK.md
 
 # Run task
-./.ralph/scripts/ralph-autonomous.sh my-task
+./.ralph/backends/cursor-agent/ralph-autonomous.sh my-task
 
 # Check progress
 cat .ralph/active/my-task/progress.md
 
 # Archive completed task
-./.ralph/scripts/ralph-task-manager.sh archive my-task
+./.ralph/core/scripts/ralph-task-manager.sh archive my-task
 ```
 
 ---
@@ -259,7 +259,7 @@ cat .ralph/active/my-task/progress.md
 1. Read troubleshooting in [SETUP.md](SETUP.md) or [RALPH_CLI_ONLY.md](RALPH_CLI_ONLY.md)
 2. Verify API key is set correctly
 3. Check git is configured
-4. Ensure scripts are executable: `chmod +x .ralph/scripts/*.sh`
+4. Ensure scripts are executable: `chmod +x .ralph/core/scripts/*.sh .ralph/backends/*/*.sh`
 
 ### Task Issues
 
@@ -286,7 +286,7 @@ All core documentation updated to **multi-task structure** as of 2026-01-17.
 | INDEX.md | ✅ Current | 2026-01-17 |
 
 **Total Documentation**: ~3,000 lines across 9 files
-**Scripts**: 14 production-ready scripts in `.ralph/scripts/`
+**Scripts**: 14 production-ready scripts in `.ralph/core/scripts/` and `.ralph/backends/`
 **Status**: ✅ Ready for production use with multi-task support
 
 ---

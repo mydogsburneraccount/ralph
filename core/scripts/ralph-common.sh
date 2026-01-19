@@ -47,9 +47,10 @@ get_ralph_dir() {
 get_iteration() {
   local workspace="${1:-.}"
   local state_file="$workspace/.ralph/.iteration"
-  
+
   if [[ -f "$state_file" ]]; then
-    cat "$state_file"
+    # Strip CRLF to handle Windows line endings
+    tr -d '\r' < "$state_file"
   else
     echo "0"
   fi
@@ -60,7 +61,7 @@ set_iteration() {
   local workspace="${1:-.}"
   local iteration="$2"
   local ralph_dir="$workspace/.ralph"
-  
+
   mkdir -p "$ralph_dir"
   echo "$iteration" > "$ralph_dir/.iteration"
 }
@@ -78,7 +79,7 @@ increment_iteration() {
 get_health_emoji() {
   local tokens="$1"
   local pct=$((tokens * 100 / ROTATE_THRESHOLD))
-  
+
   if [[ $pct -lt 60 ]]; then
     echo "🟢"
   elif [[ $pct -lt 80 ]]; then
@@ -98,7 +99,7 @@ log_activity() {
   local message="$2"
   local ralph_dir="$workspace/.ralph"
   local timestamp=$(date '+%H:%M:%S')
-  
+
   mkdir -p "$ralph_dir"
   echo "[$timestamp] $message" >> "$ralph_dir/activity.log"
 }
@@ -109,7 +110,7 @@ log_error() {
   local message="$2"
   local ralph_dir="$workspace/.ralph"
   local timestamp=$(date '+%H:%M:%S')
-  
+
   mkdir -p "$ralph_dir"
   echo "[$timestamp] $message" >> "$ralph_dir/errors.log"
 }
@@ -120,7 +121,7 @@ log_progress() {
   local message="$2"
   local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
   local progress_file="$workspace/.ralph/progress.md"
-  
+
   echo "" >> "$progress_file"
   echo "### $timestamp" >> "$progress_file"
   echo "$message" >> "$progress_file"
@@ -134,9 +135,9 @@ log_progress() {
 init_ralph_dir() {
   local workspace="$1"
   local ralph_dir="$workspace/.ralph"
-  
+
   mkdir -p "$ralph_dir"
-  
+
   # Initialize progress.md if it doesn't exist
   if [[ ! -f "$ralph_dir/progress.md" ]]; then
     cat > "$ralph_dir/progress.md" << 'EOF'
@@ -150,7 +151,7 @@ init_ralph_dir() {
 
 EOF
   fi
-  
+
   # Initialize guardrails.md if it doesn't exist
   if [[ ! -f "$ralph_dir/guardrails.md" ]]; then
     cat > "$ralph_dir/guardrails.md" << 'EOF'
@@ -181,7 +182,7 @@ EOF
 
 EOF
   fi
-  
+
   # Initialize errors.log if it doesn't exist
   if [[ ! -f "$ralph_dir/errors.log" ]]; then
     cat > "$ralph_dir/errors.log" << 'EOF'
@@ -191,7 +192,7 @@ EOF
 
 EOF
   fi
-  
+
   # Initialize activity.log if it doesn't exist
   if [[ ! -f "$ralph_dir/activity.log" ]]; then
     cat > "$ralph_dir/activity.log" << 'EOF'
@@ -211,17 +212,18 @@ EOF
 check_task_complete() {
   local workspace="$1"
   local task_file="$workspace/RALPH_TASK.md"
-  
+
   if [[ ! -f "$task_file" ]]; then
     echo "NO_TASK_FILE"
     return
   fi
-  
+
   # Only count actual checkbox list items, not [ ] in prose/examples
   # Matches: "- [ ]", "* [ ]", "1. [ ]", etc.
+  # Strip CRLF to handle Windows line endings
   local unchecked
-  unchecked=$(grep -cE '^[[:space:]]*([-*]|[0-9]+\.)[[:space:]]+\[ \]' "$task_file" 2>/dev/null) || unchecked=0
-  
+  unchecked=$(tr -d '\r' < "$task_file" | grep -cE '^[[:space:]]*([-*]|[0-9]+\.)[[:space:]]+\[ \]' 2>/dev/null) || unchecked=0
+
   if [[ "$unchecked" -eq 0 ]]; then
     echo "COMPLETE"
   else
@@ -233,18 +235,19 @@ check_task_complete() {
 count_criteria() {
   local workspace="${1:-.}"
   local task_file="$workspace/RALPH_TASK.md"
-  
+
   if [[ ! -f "$task_file" ]]; then
     echo "0:0"
     return
   fi
-  
+
   # Only count actual checkbox list items, not [x] or [ ] in prose/examples
   # Matches: "- [ ]", "* [x]", "1. [ ]", etc.
+  # Strip CRLF to handle Windows line endings
   local total done_count
-  total=$(grep -cE '^[[:space:]]*([-*]|[0-9]+\.)[[:space:]]+\[(x| )\]' "$task_file" 2>/dev/null) || total=0
-  done_count=$(grep -cE '^[[:space:]]*([-*]|[0-9]+\.)[[:space:]]+\[x\]' "$task_file" 2>/dev/null) || done_count=0
-  
+  total=$(tr -d '\r' < "$task_file" | grep -cE '^[[:space:]]*([-*]|[0-9]+\.)[[:space:]]+\[(x| )\]' 2>/dev/null) || total=0
+  done_count=$(tr -d '\r' < "$task_file" | grep -cE '^[[:space:]]*([-*]|[0-9]+\.)[[:space:]]+\[x\]' 2>/dev/null) || done_count=0
+
   echo "$done_count:$total"
 }
 
@@ -256,7 +259,7 @@ count_criteria() {
 build_prompt() {
   local workspace="$1"
   local iteration="$2"
-  
+
   cat << EOF
 # Ralph Iteration $iteration
 
@@ -358,14 +361,14 @@ run_iteration() {
   local iteration="$2"
   local session_id="${3:-}"
   local script_dir="${4:-$(dirname "${BASH_SOURCE[0]}")}"
-  
+
   local prompt=$(build_prompt "$workspace" "$iteration")
   local fifo="$workspace/.ralph/.parser_fifo"
-  
+
   # Create named pipe for parser signals
   rm -f "$fifo"
   mkfifo "$fifo"
-  
+
   # Use stderr for display (stdout is captured for signal)
   echo "" >&2
   echo "═══════════════════════════════════════════════════════════════════" >&2
@@ -376,32 +379,32 @@ run_iteration() {
   echo "Model:     $MODEL" >&2
   echo "Monitor:   tail -f $workspace/.ralph/activity.log" >&2
   echo "" >&2
-  
+
   # Log session start to progress.md
   log_progress "$workspace" "**Session $iteration started** (model: $MODEL)"
-  
+
   # Build cursor-agent command
   local cmd="cursor-agent -p --force --output-format stream-json --model $MODEL"
-  
+
   if [[ -n "$session_id" ]]; then
     echo "Resuming session: $session_id" >&2
     cmd="$cmd --resume=\"$session_id\""
   fi
-  
+
   # Change to workspace
   cd "$workspace"
-  
+
   # Start spinner to show we're alive
   spinner "$workspace" &
   local spinner_pid=$!
-  
+
   # Start parser in background, reading from cursor-agent
   # Parser outputs to fifo, we read signals from fifo
   (
     eval "$cmd \"$prompt\"" 2>&1 | "$script_dir/stream-parser.sh" "$workspace" > "$fifo"
   ) &
   local agent_pid=$!
-  
+
   # Read signals from parser
   local signal=""
   while IFS= read -r line; do
@@ -432,18 +435,18 @@ run_iteration() {
         ;;
     esac
   done < "$fifo"
-  
+
   # Wait for agent to finish
   wait $agent_pid 2>/dev/null || true
-  
+
   # Stop spinner and clear line
   kill $spinner_pid 2>/dev/null || true
   wait $spinner_pid 2>/dev/null || true
   printf "\r\033[K" >&2  # Clear spinner line
-  
+
   # Cleanup
   rm -f "$fifo"
-  
+
   echo "$signal"
 }
 
@@ -457,7 +460,7 @@ run_iteration() {
 run_ralph_loop() {
   local workspace="$1"
   local script_dir="${2:-$(dirname "${BASH_SOURCE[0]}")}"
-  
+
   # Commit any uncommitted work first
   cd "$workspace"
   if [[ -n "$(git status --porcelain 2>/dev/null)" ]]; then
@@ -465,30 +468,30 @@ run_ralph_loop() {
     git add -A
     git commit -m "ralph: initial commit before loop" || true
   fi
-  
+
   # Create branch if requested
   if [[ -n "$USE_BRANCH" ]]; then
     echo "🌿 Creating branch: $USE_BRANCH"
     git checkout -b "$USE_BRANCH" 2>/dev/null || git checkout "$USE_BRANCH"
   fi
-  
+
   echo ""
   echo "🚀 Starting Ralph loop..."
   echo ""
-  
+
   # Main loop
   local iteration=1
   local session_id=""
-  
+
   while [[ $iteration -le $MAX_ITERATIONS ]]; do
     # Run iteration
     local signal
     signal=$(run_iteration "$workspace" "$iteration" "$session_id" "$script_dir")
-    
+
     # Check task completion
     local task_status
     task_status=$(check_task_complete "$workspace")
-    
+
     if [[ "$task_status" == "COMPLETE" ]]; then
       log_progress "$workspace" "**Session $iteration ended** - ✅ TASK COMPLETE"
       echo ""
@@ -498,7 +501,7 @@ run_ralph_loop() {
       echo ""
       echo "Completed in $iteration iteration(s)."
       echo "Check git log for detailed history."
-      
+
       # Open PR if requested
       if [[ "$OPEN_PR" == "true" ]] && [[ -n "$USE_BRANCH" ]]; then
         echo ""
@@ -510,10 +513,10 @@ run_ralph_loop() {
           echo "⚠️  gh CLI not found. Push complete, create PR manually."
         fi
       fi
-      
+
       return 0
     fi
-    
+
     # Handle signals
     case "$signal" in
       "COMPLETE")
@@ -527,7 +530,7 @@ run_ralph_loop() {
           echo ""
           echo "Completed in $iteration iteration(s)."
           echo "Check git log for detailed history."
-          
+
           # Open PR if requested
           if [[ "$OPEN_PR" == "true" ]] && [[ -n "$USE_BRANCH" ]]; then
             echo ""
@@ -539,7 +542,7 @@ run_ralph_loop() {
               echo "⚠️  gh CLI not found. Push complete, create PR manually."
             fi
           fi
-          
+
           return 0
         else
           # Agent said complete but checkboxes say otherwise - continue
@@ -579,11 +582,11 @@ run_ralph_loop() {
         fi
         ;;
     esac
-    
+
     # Brief pause between iterations
     sleep 2
   done
-  
+
   log_progress "$workspace" "**Loop ended** - ⚠️ Max iterations ($MAX_ITERATIONS) reached"
   echo ""
   echo "⚠️  Max iterations ($MAX_ITERATIONS) reached."
@@ -599,7 +602,7 @@ run_ralph_loop() {
 check_prerequisites() {
   local workspace="$1"
   local task_file="$workspace/RALPH_TASK.md"
-  
+
   # Check for task file
   if [[ ! -f "$task_file" ]]; then
     echo "❌ No RALPH_TASK.md found in $workspace"
@@ -617,7 +620,7 @@ check_prerequisites() {
     echo "  EOF"
     return 1
   fi
-  
+
   # Check for cursor-agent CLI
   if ! command -v cursor-agent &> /dev/null; then
     echo "❌ cursor-agent CLI not found"
@@ -626,14 +629,14 @@ check_prerequisites() {
     echo "  curl https://cursor.com/install -fsS | bash"
     return 1
   fi
-  
+
   # Check for git repo
   if ! git -C "$workspace" rev-parse --git-dir > /dev/null 2>&1; then
     echo "❌ Not a git repository"
     echo "   Ralph requires git for state persistence."
     return 1
   fi
-  
+
   return 0
 }
 
@@ -645,23 +648,24 @@ check_prerequisites() {
 show_task_summary() {
   local workspace="$1"
   local task_file="$workspace/RALPH_TASK.md"
-  
+
   echo "📋 Task Summary:"
   echo "─────────────────────────────────────────────────────────────────"
   head -30 "$task_file"
   echo "─────────────────────────────────────────────────────────────────"
   echo ""
-  
+
   # Count criteria - only actual checkbox list items (- [ ], * [x], 1. [ ], etc.)
+  # Strip CRLF to handle Windows line endings
   local total_criteria done_criteria remaining
-  total_criteria=$(grep -cE '^[[:space:]]*([-*]|[0-9]+\.)[[:space:]]+\[(x| )\]' "$task_file" 2>/dev/null) || total_criteria=0
-  done_criteria=$(grep -cE '^[[:space:]]*([-*]|[0-9]+\.)[[:space:]]+\[x\]' "$task_file" 2>/dev/null) || done_criteria=0
+  total_criteria=$(tr -d '\r' < "$task_file" | grep -cE '^[[:space:]]*([-*]|[0-9]+\.)[[:space:]]+\[(x| )\]' 2>/dev/null) || total_criteria=0
+  done_criteria=$(tr -d '\r' < "$task_file" | grep -cE '^[[:space:]]*([-*]|[0-9]+\.)[[:space:]]+\[x\]' 2>/dev/null) || done_criteria=0
   remaining=$((total_criteria - done_criteria))
-  
+
   echo "Progress: $done_criteria / $total_criteria criteria complete ($remaining remaining)"
   echo "Model:    $MODEL"
   echo ""
-  
+
   # Return remaining count for caller to check
   echo "$remaining"
 }

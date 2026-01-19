@@ -48,10 +48,10 @@ Ralph includes `ralph-secrets.sh` for secure credential storage:
 
 ```bash
 # Initialize secrets
-./.ralph/scripts/ralph-secrets.sh init
+./.ralph/core/scripts/ralph-secrets.sh init
 
 # Set secrets
-./.ralph/scripts/ralph-secrets.sh set GITHUB_TOKEN "your-token"
+./.ralph/core/scripts/ralph-secrets.sh set GITHUB_TOKEN "your-token"
 
 # Secrets stored in ~/.ralph/secrets.env (chmod 600)
 ```

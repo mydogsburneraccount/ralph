@@ -57,7 +57,7 @@ Examples:
   ./ralph-loop.sh -n 50                              # 50 iterations max
   ./ralph-loop.sh -m gpt-5.2-high                    # Use GPT model
   ./ralph-loop.sh --branch feature/api --pr -y      # Scripted PR workflow
-  
+
 Environment:
   RALPH_MODEL            Override default model (same as -m flag)
 
@@ -120,57 +120,58 @@ main() {
   else
     WORKSPACE="$(cd "$WORKSPACE" && pwd)"
   fi
-  
+
   local task_file="$WORKSPACE/RALPH_TASK.md"
-  
+
   # Show banner
   show_banner
-  
+
   # Check prerequisites
   if ! check_prerequisites "$WORKSPACE"; then
     exit 1
   fi
-  
+
   # Validate: PR requires branch
   if [[ "$OPEN_PR" == "true" ]] && [[ -z "$USE_BRANCH" ]]; then
     echo "❌ --pr requires --branch"
     echo "   Example: ./ralph-loop.sh --branch feature/foo --pr"
     exit 1
   fi
-  
+
   # Initialize .ralph directory
   init_ralph_dir "$WORKSPACE"
-  
+
   echo "Workspace: $WORKSPACE"
   echo "Task:      $task_file"
   echo ""
-  
+
   # Show task summary
   echo "📋 Task Summary:"
   echo "─────────────────────────────────────────────────────────────────"
   head -30 "$task_file"
   echo "─────────────────────────────────────────────────────────────────"
   echo ""
-  
+
   # Count criteria
   local total_criteria done_criteria remaining
   # Only count actual checkbox list items (- [ ], * [x], 1. [ ], etc.)
-  total_criteria=$(grep -cE '^[[:space:]]*([-*]|[0-9]+\.)[[:space:]]+\[(x| )\]' "$task_file" 2>/dev/null) || total_criteria=0
-  done_criteria=$(grep -cE '^[[:space:]]*([-*]|[0-9]+\.)[[:space:]]+\[x\]' "$task_file" 2>/dev/null) || done_criteria=0
+  # Strip CRLF to handle Windows line endings
+  total_criteria=$(tr -d '\r' < "$task_file" | grep -cE '^[[:space:]]*([-*]|[0-9]+\.)[[:space:]]+\[(x| )\]' 2>/dev/null) || total_criteria=0
+  done_criteria=$(tr -d '\r' < "$task_file" | grep -cE '^[[:space:]]*([-*]|[0-9]+\.)[[:space:]]+\[x\]' 2>/dev/null) || done_criteria=0
   remaining=$((total_criteria - done_criteria))
-  
+
   echo "Progress: $done_criteria / $total_criteria criteria complete ($remaining remaining)"
   echo "Model:    $MODEL"
   echo "Max iter: $MAX_ITERATIONS"
   [[ -n "$USE_BRANCH" ]] && echo "Branch:   $USE_BRANCH"
   [[ "$OPEN_PR" == "true" ]] && echo "Open PR:  Yes"
   echo ""
-  
+
   if [[ "$remaining" -eq 0 ]] && [[ "$total_criteria" -gt 0 ]]; then
     echo "🎉 Task already complete! All criteria are checked."
     exit 0
   fi
-  
+
   # Confirm before starting (unless -y flag)
   if [[ "$SKIP_CONFIRM" != "true" ]]; then
     echo "This will run cursor-agent locally to work on this task."
@@ -181,13 +182,13 @@ main() {
     echo ""
     read -p "Start Ralph loop? [y/N] " -n 1 -r
     echo ""
-    
+
     if [[ ! $REPLY =~ ^[Yy]$ ]]; then
       echo "Aborted."
       exit 0
     fi
   fi
-  
+
   # Run the loop
   run_ralph_loop "$WORKSPACE" "$SCRIPT_DIR"
   exit $?

@@ -103,6 +103,9 @@ fi
 # Function: Estimate tokens from character count
 estimate_tokens() {
     local char_count=$1
+    # Ensure numeric value
+    char_count=$(echo "$char_count" | tr -d '[:space:]')
+    char_count=${char_count:-0}
     echo $(( char_count / CHARS_PER_TOKEN ))
 }
 
@@ -110,18 +113,27 @@ estimate_tokens() {
 estimate_cost_cents() {
     local input_tokens=$1
     local output_tokens=${2:-$input_tokens}  # Assume output ~= input if not specified
-    
+
+    # Ensure numeric values
+    input_tokens=$(echo "$input_tokens" | tr -d '[:space:]')
+    output_tokens=$(echo "$output_tokens" | tr -d '[:space:]')
+    input_tokens=${input_tokens:-0}
+    output_tokens=${output_tokens:-0}
+
     # Calculate cost in cents (multiply by 100 to avoid floating point)
     # Formula: (tokens / 1000000) * cost_per_million * 100 cents
     local input_cost=$(( input_tokens * INPUT_COST_PER_MILLION / 10000 ))
     local output_cost=$(( output_tokens * OUTPUT_COST_PER_MILLION / 10000 ))
-    
+
     echo $(( input_cost + output_cost ))
 }
 
 # Function: Format cents as dollars
 format_cost() {
     local cents=$1
+    # Ensure numeric value
+    cents=$(echo "$cents" | tr -d '[:space:]')
+    cents=${cents:-0}
     local dollars=$(( cents / 100 ))
     local remainder=$(( cents % 100 ))
     printf "%d.%02d" $dollars $remainder
@@ -134,7 +146,7 @@ log_iteration_cost() {
     local tokens=$(estimate_tokens $prompt_chars)
     local cost_cents=$(estimate_cost_cents $tokens $tokens)
     local cost_formatted=$(format_cost $cost_cents)
-    
+
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] Iteration $iteration: ~$tokens tokens, ~\$$cost_formatted ($RALPH_MODEL)" >> "$COST_LOG"
 }
 
@@ -142,11 +154,19 @@ log_iteration_cost() {
 calculate_total_cost() {
     if [ -f "$COST_LOG" ]; then
         local total_cents=0
-        while IFS= read -r line; do
+        # Strip CRLF when reading log file
+        while IFS= read -r line || [ -n "$line" ]; do
+            # Remove any carriage returns
+            line=$(echo "$line" | tr -d '\r')
             # Extract cost value from line like "~$0.05"
             if [[ $line =~ \~\$([0-9]+)\.([0-9]+) ]]; then
                 local dollars="${BASH_REMATCH[1]}"
                 local cents="${BASH_REMATCH[2]}"
+                # Clean extracted values
+                dollars=$(echo "$dollars" | tr -d '[:space:]')
+                cents=$(echo "$cents" | tr -d '[:space:]')
+                dollars=${dollars:-0}
+                cents=${cents:-0}
                 total_cents=$(( total_cents + dollars * 100 + cents ))
             fi
         done < "$COST_LOG"
@@ -156,8 +176,9 @@ calculate_total_cost() {
     fi
 }
 
-# Get current iteration
-ITERATION=$(cat "$ITERATION_FILE" 2>/dev/null || echo "0")
+# Get current iteration (strip CRLF for Windows line endings)
+ITERATION=$(tr -d '\r' < "$ITERATION_FILE" 2>/dev/null | tr -d '[:space:]' || echo "0")
+ITERATION=${ITERATION:-0}
 
 echo "╔════════════════════════════════════════════════════╗"
 echo "║     Ralph Wiggum - AIDER BACKEND (CLI-Only)        ║"
@@ -178,17 +199,17 @@ sleep 2
 while [ $ITERATION -lt $MAX_ITERATIONS ]; do
     ITERATION=$((ITERATION + 1))
     echo "$ITERATION" > "$ITERATION_FILE"
-    
+
     echo ""
     echo "═══════════════════════════════════════════════════"
     echo "Task: $TASK_NAME | Iteration $ITERATION / $MAX_ITERATIONS | Model: $RALPH_MODEL"
     echo "Started: $(date '+%Y-%m-%d %H:%M:%S')"
     echo "═══════════════════════════════════════════════════"
     echo ""
-    
+
     # Log to activity log
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] Iteration $ITERATION started (model: $RALPH_MODEL)" >> "$ACTIVITY_LOG"
-    
+
     # Build the prompt (and track its size for cost estimation)
     PROMPT="Start Ralph iteration $ITERATION for task: $TASK_NAME
 
@@ -214,11 +235,11 @@ Task directory: $TASK_DIR"
     #   --message: the prompt
     aider --model "$AIDER_MODEL" --yes-always --no-auto-commits --message "$PROMPT"
     EXIT_CODE=$?
-    
+
     # Log estimated cost for this iteration
     PROMPT_LENGTH=${#PROMPT}
     log_iteration_cost $ITERATION $PROMPT_LENGTH
-    
+
     if [ $EXIT_CODE -ne 0 ]; then
         echo ""
         echo "⚠️  Iteration $ITERATION failed with exit code $EXIT_CODE"
@@ -227,12 +248,17 @@ Task directory: $TASK_DIR"
     else
         echo "[$(date '+%Y-%m-%d %H:%M:%S')] Iteration $ITERATION completed" >> "$ACTIVITY_LOG"
     fi
-    
+
     # Check if task is complete (no unchecked boxes)
-    UNCHECKED=$(grep -c '\[ \]' "$TASK_FILE" || echo "0")
-    CHECKED=$(grep -c '\[x\]' "$TASK_FILE" || echo "0")
+    # Strip CRLF to handle Windows line endings
+    UNCHECKED=$(tr -d '\r' < "$TASK_FILE" | grep -c '\[ \]' || echo "0")
+    CHECKED=$(tr -d '\r' < "$TASK_FILE" | grep -c '\[x\]' || echo "0")
+    UNCHECKED=$(echo "$UNCHECKED" | tr -d '[:space:]')
+    CHECKED=$(echo "$CHECKED" | tr -d '[:space:]')
+    UNCHECKED=${UNCHECKED:-0}
+    CHECKED=${CHECKED:-0}
     TOTAL=$((UNCHECKED + CHECKED))
-    
+
     if [ "$UNCHECKED" = "0" ]; then
         echo ""
         echo "✅ TASK COMPLETE! All criteria checked off."
@@ -241,7 +267,7 @@ Task directory: $TASK_DIR"
         echo "[$(date '+%Y-%m-%d %H:%M:%S')] Task completed! $CHECKED/$TOTAL criteria" >> "$ACTIVITY_LOG"
         break
     fi
-    
+
     echo ""
     echo "Progress: $CHECKED / $TOTAL criteria complete ($UNCHECKED remaining)"
     echo "Continuing to next iteration..."

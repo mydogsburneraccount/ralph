@@ -147,13 +147,13 @@ Comprehensive test script that verifies:
 ```bash
 # In WSL
 cd /mnt/c/Users/Ethan/Code/cursor_local_workspace
-sudo ./.ralph/scripts/ralph-base-toolset.sh
+sudo ./.ralph/core/scripts/ralph-base-toolset.sh
 
 # Restart shell or reload config
 source ~/.bashrc
 
 # Test installation
-./.ralph/scripts/test-base-toolset.sh
+./.ralph/core/scripts/test-base-toolset.sh
 ```
 
 ### Installing Additional Dependencies
@@ -177,10 +177,10 @@ dependencies:
 
 ```bash
 # Dependencies checked and installed automatically
-./.ralph/scripts/ralph-autonomous.sh my-task
+./.ralph/backends/cursor-agent/ralph-autonomous.sh my-task
 
 # Or with auto-install
-RALPH_AUTO_INSTALL=true ./.ralph/scripts/ralph-autonomous.sh my-task
+RALPH_AUTO_INSTALL=true ./.ralph/backends/cursor-agent/ralph-autonomous.sh my-task
 ```
 
 ## Migration Notes
@@ -204,7 +204,7 @@ pipx install pytest
 Or just run the base toolset installer again:
 
 ```bash
-sudo ./.ralph/scripts/ralph-base-toolset.sh
+sudo ./.ralph/core/scripts/ralph-base-toolset.sh
 ```
 
 ### For Ralph Tasks
@@ -218,9 +218,9 @@ Existing task dependency declarations continue to work without changes. The syst
 All scripts pass bash syntax checking:
 
 ```bash
-bash -n .ralph/scripts/ralph-base-toolset.sh  ✅
-bash -n .ralph/scripts/test-base-toolset.sh   ✅
-bash -n .ralph/scripts/ralph-autonomous.sh    ✅
+bash -n .ralph/core/scripts/ralph-base-toolset.sh  ✅
+bash -n .ralph/core/scripts/test-base-toolset.sh   ✅
+bash -n .ralph/backends/cursor-agent/ralph-autonomous.sh    ✅
 ```
 
 ### Functional Testing
@@ -229,10 +229,10 @@ To test the full system:
 
 ```bash
 # 1. Install base toolset
-sudo ./.ralph/scripts/ralph-base-toolset.sh
+sudo ./.ralph/core/scripts/ralph-base-toolset.sh
 
 # 2. Run test script
-./.ralph/scripts/test-base-toolset.sh
+./.ralph/core/scripts/test-base-toolset.sh
 
 # 3. Test helper command
 ralph-install-dependency pipx ipython
@@ -246,14 +246,14 @@ pipx list
 
 ## Files Modified
 
-- `.ralph/scripts/ralph-base-toolset.sh` - Major rewrite with pipx support
-- `.ralph/scripts/ralph-autonomous.sh` - Smart Python package installation
+- `.ralph/core/scripts/ralph-base-toolset.sh` - Major rewrite with pipx support
+- `.ralph/backends/cursor-agent/ralph-autonomous.sh` - Smart Python package installation
 - `.ralph/docs/DEPENDENCY_MANAGEMENT.md` - Updated with pipx info
 - `.ralph/docs/QUICKREF.md` - Added helper commands
 
 ## Files Created
 
-- `.ralph/scripts/test-base-toolset.sh` - Comprehensive test script
+- `.ralph/core/scripts/test-base-toolset.sh` - Comprehensive test script
 - `.ralph/docs/DEPENDENCY_HELPER.md` - Helper command documentation
 - `~/.local/bin/ralph-install-dependency` - Helper command (created at runtime)
 

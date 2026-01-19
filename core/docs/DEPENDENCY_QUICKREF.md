@@ -4,10 +4,10 @@
 
 ```bash
 # First time setup
-sudo ./.ralph/scripts/ralph-base-toolset.sh
+sudo ./.ralph/core/scripts/ralph-base-toolset.sh
 
 # Test installation
-./.ralph/scripts/test-base-toolset.sh
+./.ralph/core/scripts/test-base-toolset.sh
 
 # Add to PATH (if needed)
 export PATH="$HOME/.local/bin:$PATH"
@@ -114,7 +114,7 @@ echo $PATH | grep ".local/bin"
 ### "command not found: ralph-install-dependency"
 ```bash
 # Re-run base toolset installer
-sudo ./.ralph/scripts/ralph-base-toolset.sh
+sudo ./.ralph/core/scripts/ralph-base-toolset.sh
 
 # Or add to PATH manually
 export PATH="$HOME/.local/bin:$PATH"
@@ -184,5 +184,5 @@ Need a Python package?
 ---
 
 **Quick Help**: `ralph-install-dependency` (no args shows usage)  
-**Test Installation**: `./.ralph/scripts/test-base-toolset.sh`  
+**Test Installation**: `./.ralph/core/scripts/test-base-toolset.sh`  
 **Update Date**: 2026-01-17

@@ -16,7 +16,8 @@ VAULT_ADDR="${VAULT_ADDR:-http://flippanet:8201}"
 # Never hardcode tokens. Get token from file if not in env.
 if [ -z "${VAULT_TOKEN:-}" ]; then
     if [ -f "${HOME}/.ralph/vault-token" ]; then
-        VAULT_TOKEN=$(cat "${HOME}/.ralph/vault-token")
+        # Strip CRLF to handle Windows line endings in token file
+        VAULT_TOKEN=$(tr -d '\r\n' < "${HOME}/.ralph/vault-token")
     else
         VAULT_TOKEN=""
     fi
@@ -30,16 +31,16 @@ vault_available() {
 # Get secret from local file
 get_secret_local() {
     local key="$1"
-    
+
     if [ ! -f "$SECRETS_FILE" ]; then
         echo "Error: Secrets file not found: $SECRETS_FILE" >&2
         echo "Run: $0 init" >&2
         return 1
     fi
-    
+
     # Extract value from ENV_VAR="value" format
     local value=$(grep "^export ${key}=" "$SECRETS_FILE" 2>/dev/null | cut -d'"' -f2)
-    
+
     if [ -n "$value" ]; then
         echo "$value"
         return 0
@@ -53,22 +54,22 @@ get_secret_local() {
 get_secret_vault() {
     local secret_path="$1"
     local field="${2:-}"  # Optional: specific field to extract
-    
+
     if [ -z "$VAULT_TOKEN" ]; then
         echo "Error: No Vault token configured." >&2
         echo "Set VAULT_TOKEN env var or create ~/.ralph/vault-token" >&2
         return 1
     fi
-    
+
     local response=$(curl -sf -H "X-Vault-Token: $VAULT_TOKEN" \
         "$VAULT_ADDR/v1/secret/data/$secret_path" 2>/dev/null)
-    
+
     if [ -z "$response" ]; then
         echo "Error: Could not retrieve secret: $secret_path" >&2
         echo "Check: token valid, path correct, Vault unsealed" >&2
         return 1
     fi
-    
+
     # If field specified, get that field; otherwise get 'value' or show all data
     if [ -n "$field" ]; then
         local value=$(echo "$response" | jq -r ".data.data.${field}" 2>/dev/null)
@@ -80,7 +81,7 @@ get_secret_vault() {
             value=$(echo "$response" | jq -r '.data.data' 2>/dev/null)
         fi
     fi
-    
+
     if [ "$value" != "null" ] && [ -n "$value" ]; then
         echo "$value"
         return 0
@@ -95,7 +96,7 @@ get_secret_vault() {
 set_secret_local() {
     local key="$1"
     local value="$2"
-    
+
     # Create file if it doesn't exist
     if [ ! -f "$SECRETS_FILE" ]; then
         mkdir -p "$(dirname "$SECRETS_FILE")"
@@ -106,7 +107,7 @@ set_secret_local() {
 EOF
         chmod 600 "$SECRETS_FILE"
     fi
-    
+
     # Update or add the secret
     if grep -q "^export ${key}=" "$SECRETS_FILE"; then
         # Update existing
@@ -115,7 +116,7 @@ EOF
         # Add new
         echo "export ${key}=\"${value}\"" >> "$SECRETS_FILE"
     fi
-    
+
     echo "✓ Secret ${key} saved to $SECRETS_FILE"
 }
 
@@ -129,9 +130,9 @@ init_secrets() {
             exit 0
         fi
     fi
-    
+
     mkdir -p "$(dirname "$SECRETS_FILE")"
-    
+
     cat > "$SECRETS_FILE" << 'EOF'
 # Ralph Secrets - DO NOT COMMIT
 # This file stores sensitive tokens for Ralph automation
@@ -155,9 +156,9 @@ export DISCORD_WEBHOOK=""
 # Slack Webhook (optional - for notifications)
 export SLACK_WEBHOOK=""
 EOF
-    
+
     chmod 600 "$SECRETS_FILE"
-    
+
     echo "✓ Created secrets file: $SECRETS_FILE"
     echo ""
     echo "Next steps:"
@@ -191,20 +192,20 @@ case "${1:-}" in
             echo "  field: optional specific field (e.g., username)"
             exit 1
         fi
-        
+
         if vault_available; then
             get_secret_vault "$2" "${3:-}"
         else
             get_secret_local "$2"
         fi
         ;;
-        
+
     set)
         if [ -z "${2:-}" ] || [ -z "${3:-}" ]; then
             echo "Usage: $0 set <key> <value>"
             exit 1
         fi
-        
+
         if vault_available; then
             echo "Vault mode - use SSH to set:"
             echo "ssh flippanet 'docker exec vault vault kv put secret/$2 value=\"$3\"'"
@@ -212,15 +213,15 @@ case "${1:-}" in
             set_secret_local "$2" "$3"
         fi
         ;;
-        
+
     init)
         init_secrets
         ;;
-        
+
     list)
         list_secrets
         ;;
-        
+
     edit)
         if [ ! -f "$SECRETS_FILE" ]; then
             echo "Secrets file doesn't exist. Creating..."
@@ -228,7 +229,7 @@ case "${1:-}" in
         fi
         ${EDITOR:-nano} "$SECRETS_FILE"
         ;;
-        
+
     mode)
         if vault_available; then
             echo "Mode: Vault (Flippanet)"
@@ -249,7 +250,7 @@ case "${1:-}" in
             fi
         fi
         ;;
-        
+
     *)
         echo "Ralph Secret Manager"
         echo ""

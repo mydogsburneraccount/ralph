@@ -47,7 +47,7 @@ Options:
 Examples:
   ./ralph-once.sh                        # Run one iteration
   ./ralph-once.sh -m sonnet-4.5-thinking # Use Sonnet model
-  
+
 After reviewing the results:
   - If satisfied: run ./ralph-setup.sh for full loop
   - If issues: fix them, update RALPH_TASK.md or guardrails, run again
@@ -93,9 +93,9 @@ main() {
   else
     WORKSPACE="$(cd "$WORKSPACE" && pwd)"
   fi
-  
+
   local task_file="$WORKSPACE/RALPH_TASK.md"
-  
+
   # Show banner
   echo "═══════════════════════════════════════════════════════════════════"
   echo "🐛 Ralph Wiggum: Single Iteration (Human-in-the-Loop)"
@@ -106,50 +106,51 @@ main() {
   echo ""
   echo "═══════════════════════════════════════════════════════════════════"
   echo ""
-  
+
   # Check prerequisites
   if ! check_prerequisites "$WORKSPACE"; then
     exit 1
   fi
-  
+
   # Initialize .ralph directory
   init_ralph_dir "$WORKSPACE"
-  
+
   echo "Workspace: $WORKSPACE"
   echo "Model:     $MODEL"
   echo ""
-  
+
   # Show task summary
   echo "📋 Task Summary:"
   echo "─────────────────────────────────────────────────────────────────"
   head -30 "$task_file"
   echo "─────────────────────────────────────────────────────────────────"
   echo ""
-  
+
   # Count criteria
   local total_criteria done_criteria remaining
   # Only count actual checkbox list items (- [ ], * [x], 1. [ ], etc.)
-  total_criteria=$(grep -cE '^[[:space:]]*([-*]|[0-9]+\.)[[:space:]]+\[(x| )\]' "$task_file" 2>/dev/null) || total_criteria=0
-  done_criteria=$(grep -cE '^[[:space:]]*([-*]|[0-9]+\.)[[:space:]]+\[x\]' "$task_file" 2>/dev/null) || done_criteria=0
+  # Strip CRLF to handle Windows line endings
+  total_criteria=$(tr -d '\r' < "$task_file" | grep -cE '^[[:space:]]*([-*]|[0-9]+\.)[[:space:]]+\[(x| )\]' 2>/dev/null) || total_criteria=0
+  done_criteria=$(tr -d '\r' < "$task_file" | grep -cE '^[[:space:]]*([-*]|[0-9]+\.)[[:space:]]+\[x\]' 2>/dev/null) || done_criteria=0
   remaining=$((total_criteria - done_criteria))
-  
+
   echo "Progress: $done_criteria / $total_criteria criteria complete ($remaining remaining)"
   echo ""
-  
+
   if [[ "$remaining" -eq 0 ]] && [[ "$total_criteria" -gt 0 ]]; then
     echo "🎉 Task already complete! All criteria are checked."
     exit 0
   fi
-  
+
   # Confirm
   read -p "Run single iteration? [Y/n] " -n 1 -r
   echo ""
-  
+
   if [[ $REPLY =~ ^[Nn]$ ]]; then
     echo "Aborted."
     exit 0
   fi
-  
+
   # Commit any uncommitted work first
   cd "$WORKSPACE"
   if [[ -n "$(git status --porcelain 2>/dev/null)" ]]; then
@@ -157,25 +158,25 @@ main() {
     git add -A
     git commit -m "ralph: checkpoint before single iteration" || true
   fi
-  
+
   echo ""
   echo "🚀 Running single iteration..."
   echo ""
-  
+
   # Run exactly one iteration
   local signal
   signal=$(run_iteration "$WORKSPACE" "1" "" "$SCRIPT_DIR")
-  
+
   # Check result
   local task_status
   task_status=$(check_task_complete "$WORKSPACE")
-  
+
   echo ""
   echo "═══════════════════════════════════════════════════════════════════"
   echo "📋 Single Iteration Complete"
   echo "═══════════════════════════════════════════════════════════════════"
   echo ""
-  
+
   case "$signal" in
     "COMPLETE")
       if [[ "$task_status" == "COMPLETE" ]]; then
@@ -210,7 +211,7 @@ main() {
       fi
       ;;
   esac
-  
+
   echo ""
   echo "Review the changes:"
   echo "  • git log --oneline -5     # See recent commits"

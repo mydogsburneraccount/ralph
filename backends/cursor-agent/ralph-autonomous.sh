@@ -78,14 +78,99 @@ CHARS_PER_TOKEN=4           # Rough estimate: 4 characters per token
 # Add cursor-agent to PATH, plus user's local bin for pip --user installs
 export PATH="$HOME/.local/bin:$PATH"
 
-# Check prerequisites
-if [ ! -f "$TASK_FILE" ]; then
-    echo "❌ TASK.md not found in $TASK_DIR"
+# =============================================================================
+# TASK VALIDATION
+# =============================================================================
+
+validate_task() {
+    local task_dir="$1"
+    local task_file="$task_dir/TASK.md"
+    local progress_file="$task_dir/progress.md"
+    local errors=0
+    
+    echo ""
+    echo "🔍 Validating task structure..."
+    echo ""
+    
+    # 1. Check TASK.md exists
+    if [ ! -f "$task_file" ]; then
+        echo "  ❌ TASK.md not found"
+        errors=$((errors + 1))
+    else
+        echo "  ✓ TASK.md exists"
+        
+        # 2. Check TASK.md has criteria (checkboxes)
+        local checkbox_count
+        checkbox_count=$(tr -d '\r' < "$task_file" | grep -cE '\[ \]|\[x\]' || echo "0")
+        checkbox_count=$(echo "$checkbox_count" | tr -d '[:space:]')
+        checkbox_count=${checkbox_count:-0}
+        
+        if [ "$checkbox_count" -eq 0 ]; then
+            echo "  ❌ TASK.md has no checkboxes (criteria)"
+            echo "     Add criteria like: - [ ] First thing to do"
+            errors=$((errors + 1))
+        else
+            echo "  ✓ TASK.md has $checkbox_count criteria"
+        fi
+        
+        # 3. Check TASK.md has a title
+        local has_title
+        has_title=$(tr -d '\r' < "$task_file" | grep -c '^# ' || echo "0")
+        has_title=$(echo "$has_title" | tr -d '[:space:]')
+        has_title=${has_title:-0}
+        if [ "$has_title" -eq 0 ]; then
+            echo "  ⚠️  TASK.md has no title (# heading)"
+        fi
+        
+        # 4. Check for promise marker OR checkboxes
+        local has_promise
+        has_promise=$(tr -d '\r' < "$task_file" | grep -c '<promise>' || echo "0")
+        has_promise=$(echo "$has_promise" | tr -d '[:space:]')
+        has_promise=${has_promise:-0}
+        if [ "$has_promise" -gt 0 ]; then
+            echo "  ✓ TASK.md has promise marker"
+        fi
+    fi
+    
+    # 5. Check progress.md exists (will be created if not, but warn)
+    if [ ! -f "$progress_file" ]; then
+        echo "  ⚠️  progress.md not found (will be created)"
+    else
+        echo "  ✓ progress.md exists"
+    fi
+    
+    # 6. Check guardrails.md exists at workspace level
+    if [ ! -f "$GUARDRAILS_FILE" ]; then
+        echo "  ⚠️  guardrails.md not found at workspace level (will be created)"
+    else
+        echo "  ✓ guardrails.md exists"
+    fi
+    
+    echo ""
+    
+    if [ $errors -gt 0 ]; then
+        echo "❌ Task validation failed with $errors error(s)"
+        echo ""
+        echo "Fix these issues before running Ralph."
+        return 1
+    else
+        echo "✓ Task validation passed"
+        return 0
+    fi
+}
+
+# =============================================================================
+# PREREQUISITES
+# =============================================================================
+
+# Check cursor-agent CLI
+if ! command -v cursor-agent &> /dev/null; then
+    echo "❌ cursor-agent not found. Run ralph-wsl-setup.sh first"
     exit 1
 fi
 
-if ! command -v cursor-agent &> /dev/null; then
-    echo "❌ cursor-agent not found. Run ralph-wsl-setup.sh first"
+# Validate task structure
+if ! validate_task "$TASK_DIR"; then
     exit 1
 fi
 
@@ -127,6 +212,9 @@ fi
 # Function: Estimate tokens from character count
 estimate_tokens() {
     local char_count=$1
+    # Ensure numeric value
+    char_count=$(echo "$char_count" | tr -d '[:space:]')
+    char_count=${char_count:-0}
     echo $(( char_count / CHARS_PER_TOKEN ))
 }
 
@@ -134,6 +222,12 @@ estimate_tokens() {
 estimate_cost_cents() {
     local input_tokens=$1
     local output_tokens=${2:-$input_tokens}  # Assume output ~= input if not specified
+
+    # Ensure numeric values
+    input_tokens=$(echo "$input_tokens" | tr -d '[:space:]')
+    output_tokens=$(echo "$output_tokens" | tr -d '[:space:]')
+    input_tokens=${input_tokens:-0}
+    output_tokens=${output_tokens:-0}
 
     # Calculate cost in cents (multiply by 100 to avoid floating point)
     # Formula: (tokens / 1000000) * cost_per_million * 100 cents
@@ -146,6 +240,9 @@ estimate_cost_cents() {
 # Function: Format cents as dollars
 format_cost() {
     local cents=$1
+    # Ensure numeric value
+    cents=$(echo "$cents" | tr -d '[:space:]')
+    cents=${cents:-0}
     local dollars=$(( cents / 100 ))
     local remainder=$(( cents % 100 ))
     printf "%d.%02d" $dollars $remainder
@@ -166,11 +263,19 @@ log_iteration_cost() {
 calculate_total_cost() {
     if [ -f "$COST_LOG" ]; then
         local total_cents=0
-        while IFS= read -r line; do
+        # Strip CRLF when reading log file
+        while IFS= read -r line || [ -n "$line" ]; do
+            # Remove any carriage returns
+            line=$(echo "$line" | tr -d '\r')
             # Extract cost value from line like "~$0.05"
             if [[ $line =~ \~\$([0-9]+)\.([0-9]+) ]]; then
                 local dollars="${BASH_REMATCH[1]}"
                 local cents="${BASH_REMATCH[2]}"
+                # Clean extracted values
+                dollars=$(echo "$dollars" | tr -d '[:space:]')
+                cents=$(echo "$cents" | tr -d '[:space:]')
+                dollars=${dollars:-0}
+                cents=${cents:-0}
                 total_cents=$(( total_cents + dollars * 100 + cents ))
             fi
         done < "$COST_LOG"
@@ -289,20 +394,20 @@ install_system_package() {
 # Function: Install a Python package
 install_python_package() {
     local package="$1"
-    
+
     # List of packages that should be installed via pipx (CLI tools)
     local pipx_packages=(
-        "aider-chat" "aider" 
-        "black" "ruff" "mypy" 
+        "aider-chat" "aider"
+        "black" "ruff" "mypy"
         "pytest" "ipython"
         "poetry" "pipenv"
         "cookiecutter" "pre-commit"
         "httpie" "youtube-dl" "yt-dlp"
     )
-    
+
     # Extract package name without version specifiers
     local pkg_name="${package%%[<>=]*}"
-    
+
     # Check if this should be installed via pipx
     local use_pipx=false
     for pipx_pkg in "${pipx_packages[@]}"; do
@@ -311,10 +416,10 @@ install_python_package() {
             break
         fi
     done
-    
+
     if [ "$use_pipx" = true ]; then
         echo "Installing Python CLI tool via pipx: $package"
-        
+
         # Check if pipx exists
         if ! command_exists pipx; then
             echo "pipx not found, installing..."
@@ -324,41 +429,41 @@ install_python_package() {
                 export PATH="$HOME/.local/bin:$PATH"
             else
                 echo "❌ pip not found. Please install Python and pip first."
-                echo "Run: ./.ralph/scripts/ralph-base-toolset.sh"
+                echo "Run: ./.ralph/core/scripts/ralph-base-toolset.sh"
                 return 1
             fi
         fi
-        
+
         # Install via pipx
         pipx install "$package" 2>&1 | grep -v "^  installed package" || true
-        
+
         # Ensure PATH includes pipx binaries
         export PATH="$HOME/.local/bin:$PATH"
-        
+
         return 0
     else
         echo "Installing Python library: $package"
-        
+
         # Check if pip3 exists
         if ! command_exists pip3 && ! command_exists pip; then
             echo "❌ pip not found. Please install Python and pip first."
-            echo "Run: ./.ralph/scripts/ralph-base-toolset.sh"
+            echo "Run: ./.ralph/core/scripts/ralph-base-toolset.sh"
             return 1
         fi
-        
+
         # Use pip3 if available, otherwise pip
         local pip_cmd="pip3"
         if ! command_exists pip3; then
             pip_cmd="pip"
         fi
-        
+
         # Always use --user flag for safety (best practice)
         if ! $pip_cmd install --user "$package" 2>&1; then
             # If --user fails, try with --break-system-packages as last resort
             echo "⚠️  Standard install failed, trying --break-system-packages..."
             $pip_cmd install --break-system-packages "$package"
         fi
-        
+
         return 0
     fi
 }
@@ -703,13 +808,12 @@ fetch_rag_context() {
     fi
 }
 
-# Check RAG availability at startup (optional feature)
+# Check RAG availability at startup (optional HTTP endpoint - MCP RAG is used via prompt)
 RAG_AVAILABLE=$(check_rag_available)
 if [ "$RAG_AVAILABLE" = "true" ]; then
-    echo "✓ Local RAG available at $RAG_ENDPOINT"
-else
-    echo "ℹ️  Local RAG not available (optional feature)"
+    echo "✓ Local RAG HTTP endpoint available at $RAG_ENDPOINT"
 fi
+# Note: MCP local-rag is always available to cursor-agent via the prompt instruction
 
 # Check task dependencies (unless explicitly skipped)
 if [ "${RALPH_SKIP_DEPS:-false}" != "true" ]; then
@@ -720,8 +824,10 @@ if [ "${RALPH_SKIP_DEPS:-false}" != "true" ]; then
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] All dependencies satisfied" >> "$ACTIVITY_LOG"
 fi
 
-# Get current iteration
-ITERATION=$(cat "$ITERATION_FILE" 2>/dev/null || echo "0")
+# Get current iteration (strip CRLF for Windows line endings)
+ITERATION=$(tr -d '\r' < "$ITERATION_FILE" 2>/dev/null || echo "0")
+ITERATION=$(echo "$ITERATION" | tr -d '[:space:]')
+ITERATION=${ITERATION:-0}
 
 echo "╔════════════════════════════════════════════════════╗"
 echo "║     Ralph Wiggum - AUTONOMOUS MODE (Multi-Task)   ║"
@@ -776,14 +882,13 @@ Follow the Ralph protocol:
 
 Current focus: First unchecked criterion in $TASK_FILE
 
-Task directory: $TASK_DIR"
+Task directory: $TASK_DIR
 
-    # Add RAG context reference if available
-    if [ "$RAG_AVAILABLE" = "true" ] && [ -f "$RAG_CONTEXT_FILE" ]; then
-        PROMPT="$PROMPT
-
-Relevant context from Local RAG: See $RAG_CONTEXT_FILE for additional guidance."
-    fi
+CONTEXT ENRICHMENT (do this FIRST before reading task files):
+Use the local-rag MCP tool 'query_documents' to search for relevant context:
+- Query: '$TASK_NAME project context user preferences'
+- This may return helpful information about the user's projects, preferences, and related documentation
+- Use any relevant results to inform your approach to the task"
 
     # If previous iteration failed, add Sign prompt
     if [ $LAST_FAILURE_ITERATION -gt 0 ] && [ "$SIGN_PROMPTED" = "false" ]; then
@@ -849,12 +954,20 @@ Iteration $LAST_FAILURE_ITERATION failed. Before continuing with the task:
     fi
 
     # Check if task is complete (checkboxes OR promise marker)
-    UNCHECKED=$(grep -c '\[ \]' "$TASK_FILE" || echo "0")
-    CHECKED=$(grep -c '\[x\]' "$TASK_FILE" || echo "0")
+    # Strip CRLF to handle Windows line endings
+    UNCHECKED=$(tr -d '\r' < "$TASK_FILE" | grep -c '\[ \]' || echo "0")
+    CHECKED=$(tr -d '\r' < "$TASK_FILE" | grep -c '\[x\]' || echo "0")
+    # Ensure numeric values
+    UNCHECKED=$(echo "$UNCHECKED" | tr -d '[:space:]')
+    CHECKED=$(echo "$CHECKED" | tr -d '[:space:]')
+    UNCHECKED=${UNCHECKED:-0}
+    CHECKED=${CHECKED:-0}
     TOTAL=$((UNCHECKED + CHECKED))
 
     # Check for promise marker as alternative completion method
-    PROMISE_COMPLETE=$(grep -c '<promise>COMPLETE</promise>' "$TASK_FILE" || echo "0")
+    PROMISE_COMPLETE=$(tr -d '\r' < "$TASK_FILE" | grep -c '<promise>COMPLETE</promise>' || echo "0")
+    PROMISE_COMPLETE=$(echo "$PROMISE_COMPLETE" | tr -d '[:space:]')
+    PROMISE_COMPLETE=${PROMISE_COMPLETE:-0}
 
     # Determine completion method and status
     COMPLETION_METHOD=""

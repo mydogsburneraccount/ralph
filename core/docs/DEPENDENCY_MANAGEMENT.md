@@ -157,8 +157,7 @@ RALPH_SKIP_DEPS=true ./ralph-autonomous.sh my-task
 
 ```bash
 # One-time setup of standard tools
-cd .ralph/scripts
-sudo ./ralph-base-toolset.sh
+sudo ./.ralph/core/scripts/ralph-base-toolset.sh
 ```
 
 ### Install Dependencies On-The-Fly
@@ -201,27 +200,27 @@ Iteration 1: Start actual work with all dependencies satisfied
 
 ### Modified Files
 
-- `.ralph/scripts/ralph-autonomous.sh` - Added ~300 lines of dependency management
-- `.ralph/docs/RALPH_RULES.md` - Added dependency declaration documentation
-- `.ralph/docs/QUICKREF.md` - Added dependency commands
+- `.ralph/backends/cursor-agent/ralph-autonomous.sh` - Added ~300 lines of dependency management
+- `.ralph/core/docs/RALPH_RULES.md` - Added dependency declaration documentation
+- `.ralph/core/docs/QUICKREF.md` - Added dependency commands
 - `.ralph/active/ralph-enhancement/TASK.md` - Added dependency declarations
 
 ### New Files
 
-- `.ralph/scripts/ralph-base-toolset.sh` - Base toolset installer (370 lines)
-- `.ralph/scripts/test-dependency-parsing.sh` - Dependency parsing tests
-- `.ralph/docs/TASK_TEMPLATE.md` - Task template with dependencies
-- `.ralph/docs/DEPENDENCY_TESTING.md` - Comprehensive test guide
+- `.ralph/core/scripts/ralph-base-toolset.sh` - Base toolset installer (370 lines)
+- `.ralph/core/scripts/test-dependency-parsing.sh` - Dependency parsing tests
+- `.ralph/core/docs/TASK_TEMPLATE.md` - Task template with dependencies
+- `.ralph/core/docs/DEPENDENCY_TESTING.md` - Comprehensive test guide
 
 ## Testing
 
 Run the test script to verify dependency parsing:
 
 ```bash
-./ralph/scripts/test-dependency-parsing.sh
+./.ralph/core/scripts/test-dependency-parsing.sh
 ```
 
-For comprehensive testing in a fresh WSL environment, see `.ralph/docs/DEPENDENCY_TESTING.md`.
+For comprehensive testing in a fresh WSL environment, see `.ralph/core/docs/DEPENDENCY_TESTING.md`.
 
 ## Future Enhancements
 
@@ -240,7 +239,7 @@ Possible improvements:
 If this system causes issues:
 
 ```bash
-git checkout HEAD~1 .ralph/scripts/ralph-autonomous.sh
+git checkout HEAD~1 .ralph/backends/cursor-agent/ralph-autonomous.sh
 ```
 
 Or revert the entire feature:

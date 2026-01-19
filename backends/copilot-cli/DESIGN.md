@@ -393,7 +393,7 @@ check_quota() {
 ### File Structure
 
 ```
-.ralph/scripts/
+.ralph/core/scripts/
 ├── ralph-copilot.sh        # Main script (bash wrapper)
 ├── ralph-copilot/
 │   ├── __init__.py

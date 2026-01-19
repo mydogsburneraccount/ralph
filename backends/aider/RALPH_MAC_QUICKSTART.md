@@ -49,7 +49,7 @@ cd cursor_local_workspace
 ```bash
 # On your personal Windows machine:
 cd /mnt/c/Users/Ethan/Code/cursor_local_workspace
-zip -r ralph-for-mac.zip .ralph/scripts/ .ralph/
+zip -r ralph-for-mac.zip .ralph/core/scripts/ .ralph/backends/ .ralph/
 
 # Email ralph-for-mac.zip to your corporate email
 
@@ -130,7 +130,7 @@ touch .ralph/progress.md .ralph/guardrails.md .ralph/errors.log
 echo "0" > .ralph/.iteration
 
 # Make scripts executable
-chmod +x .ralph/scripts/*.sh
+chmod +x .ralph/core/scripts/*.sh .ralph/backends/*/*.sh
 
 # Initialize git if needed
 git init
@@ -156,13 +156,13 @@ Simple test to verify Ralph works on this Mac.
 EOF
 
 # Copy autonomous script and modify for test
-cp .ralph/scripts/ralph-autonomous.sh .ralph/scripts/ralph-mac-test.sh
+cp .ralph/backends/cursor-agent/ralph-autonomous.sh .ralph/backends/cursor-agent/ralph-mac-test.sh
 
 # Edit to use test task
-cp .ralph/scripts/ralph-autonomous.sh .ralph/scripts/ralph-mac-test.sh
+cp .ralph/backends/cursor-agent/ralph-autonomous.sh .ralph/backends/cursor-agent/ralph-mac-test.sh
 
 # Set to single iteration for testing
-sed -i '' 's/MAX_ITERATIONS=20/MAX_ITERATIONS=1/' .ralph/scripts/ralph-mac-test.sh
+sed -i '' 's/MAX_ITERATIONS=20/MAX_ITERATIONS=1/' .ralph/backends/cursor-agent/ralph-mac-test.sh
 
 # Create test task
 mkdir -p .ralph/active/test-task
@@ -179,7 +179,7 @@ This is just a test.
 EOF
 
 # Run single iteration
-./.ralph/scripts/ralph-mac-test.sh test-task
+./.ralph/backends/cursor-agent/ralph-mac-test.sh test-task
 ```
 
 **Expected result**:
@@ -195,16 +195,16 @@ EOF
 
 ```bash
 # Create your task
-./.ralph/scripts/ralph-task-manager.sh create my-project
+./.ralph/core/scripts/ralph-task-manager.sh create my-project
 
 # Edit your task definition
 nano .ralph/active/my-project/TASK.md
 
 # Run autonomous mode (up to 20 iterations)
-./.ralph/scripts/ralph-autonomous.sh my-project
+./.ralph/backends/cursor-agent/ralph-autonomous.sh my-project
 
 # Or run in background
-nohup ./.ralph/scripts/ralph-autonomous.sh my-project > ralph.log 2>&1 &
+nohup ./.ralph/backends/cursor-agent/ralph-autonomous.sh my-project > ralph.log 2>&1 &
 
 # Check progress
 cat .ralph/active/my-project/progress.md
@@ -277,7 +277,7 @@ source ~/.zshrc
 
 ```bash
 # Make executable
-chmod +x .ralph/scripts/*.sh
+chmod +x .ralph/core/scripts/*.sh .ralph/backends/*/*.sh
 
 # If still fails, check corporate security policies
 # May need to add Terminal to Developer Tools in System Settings
@@ -355,7 +355,7 @@ System Settings → Privacy & Security → Developer Tools
 
 ```bash
 # Remove quarantine attribute
-xattr -d com.apple.quarantine .ralph/scripts/*.sh
+xattr -d com.apple.quarantine .ralph/core/scripts/*.sh .ralph/backends/*/*.sh
 ```
 
 ---
@@ -436,10 +436,10 @@ cat .ralph/active/<task-name>/progress.md   # What's done
 cat .ralph/guardrails.md                     # Global lessons learned
 
 # Run Ralph
-./.ralph/scripts/ralph-autonomous.sh <task-name>
+./.ralph/backends/cursor-agent/ralph-autonomous.sh <task-name>
 
 # Run in background
-nohup ./.ralph/scripts/ralph-autonomous.sh > ralph.log 2>&1 &
+nohup ./.ralph/backends/cursor-agent/ralph-autonomous.sh > ralph.log 2>&1 &
 
 # Check background process
 ps aux | grep ralph-autonomous

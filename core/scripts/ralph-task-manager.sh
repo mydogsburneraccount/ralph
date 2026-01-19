@@ -16,6 +16,7 @@ function show_usage() {
     echo "  $0 archive <task-name>     - Archive a completed task"
     echo "  $0 status <task-name>      - Show task status"
     echo "  $0 resume <task-name>      - Resume a completed task"
+    echo "  $0 validate [task-name]    - Validate task structure (all if no name)"
     echo ""
 }
 
@@ -34,9 +35,18 @@ function list_tasks() {
         [ -d "$task_dir" ] || continue
         
         task_name=$(basename "$task_dir")
-        iter=$(cat "$task_dir/.iteration" 2>/dev/null || echo "0")
-        unchecked=$(grep -c '\[ \]' "$task_dir/TASK.md" 2>/dev/null || echo "0")
-        checked=$(grep -c '\[x\]' "$task_dir/TASK.md" 2>/dev/null || echo "0")
+        iter=$(cat "$task_dir/.iteration" 2>/dev/null | tr -d '\r' || echo "0")
+        
+        # Count checkboxes - strip CRLF to avoid arithmetic errors
+        # Use tr -d '\r' to handle Windows line endings in TASK.md files
+        unchecked=$(tr -d '\r' < "$task_dir/TASK.md" 2>/dev/null | grep -c '\- \[ \]' || echo "0")
+        checked=$(tr -d '\r' < "$task_dir/TASK.md" 2>/dev/null | grep -c '\- \[x\]' || echo "0")
+        
+        # Ensure variables are numeric (strip any remaining whitespace)
+        unchecked=$(echo "$unchecked" | tr -d '[:space:]')
+        checked=$(echo "$checked" | tr -d '[:space:]')
+        unchecked=${unchecked:-0}
+        checked=${checked:-0}
         total=$((unchecked + checked))
         
         if [ "$total" -gt 0 ]; then
@@ -151,9 +161,20 @@ function show_status() {
     echo "╚════════════════════════════════════════════════════╝"
     echo ""
     
-    iter=$(cat "$task_dir/.iteration" 2>/dev/null || echo "0")
-    unchecked=$(grep -c '\[ \]' "$task_dir/TASK.md" 2>/dev/null || echo "0")
-    checked=$(grep -c '\[x\]' "$task_dir/TASK.md" 2>/dev/null || echo "0")
+    # Strip CRLF to handle Windows line endings
+    # Check if .iteration file exists before reading
+    if [ -f "$task_dir/.iteration" ]; then
+        iter=$(tr -d '\r' < "$task_dir/.iteration" | tr -d '[:space:]')
+    else
+        iter="0"
+    fi
+    iter=${iter:-0}
+    unchecked=$(tr -d '\r' < "$task_dir/TASK.md" 2>/dev/null | grep -c '\[ \]' || echo "0")
+    checked=$(tr -d '\r' < "$task_dir/TASK.md" 2>/dev/null | grep -c '\[x\]' || echo "0")
+    unchecked=$(echo "$unchecked" | tr -d '[:space:]')
+    checked=$(echo "$checked" | tr -d '[:space:]')
+    unchecked=${unchecked:-0}
+    checked=${checked:-0}
     total=$((unchecked + checked))
     
     echo "Iteration: $iter"
@@ -182,6 +203,196 @@ function resume_task() {
     echo "✅ Task resumed: $task_dir"
 }
 
+function validate_task() {
+    local task_name="$1"
+    local task_dir="$ACTIVE_DIR/$task_name"
+    local guardrails_file="$WORKSPACE/.ralph/guardrails.md"
+    local errors=0
+    local warnings=0
+    
+    if [ ! -d "$task_dir" ]; then
+        echo "❌ Task not found: $task_name"
+        exit 1
+    fi
+    
+    echo "╔════════════════════════════════════════════════════╗"
+    echo "║  Validating Task: $task_name"
+    echo "╚════════════════════════════════════════════════════╝"
+    echo ""
+    
+    # 1. Check TASK.md exists
+    if [ ! -f "$task_dir/TASK.md" ]; then
+        echo "  ❌ TASK.md not found"
+        errors=$((errors + 1))
+    else
+        echo "  ✓ TASK.md exists"
+        
+        # 2. Check TASK.md has criteria (checkboxes)
+        local unchecked checked total
+        unchecked=$(tr -d '\r' < "$task_dir/TASK.md" | grep -c '\[ \]' || echo "0")
+        checked=$(tr -d '\r' < "$task_dir/TASK.md" | grep -c '\[x\]' || echo "0")
+        unchecked=$(echo "$unchecked" | tr -d '[:space:]')
+        checked=$(echo "$checked" | tr -d '[:space:]')
+        total=$((unchecked + checked))
+        
+        if [ "$total" -eq 0 ]; then
+            # Check for promise marker as alternative
+            local has_promise
+            has_promise=$(tr -d '\r' < "$task_dir/TASK.md" | grep -c '<promise>' || echo "0")
+            has_promise=$(echo "$has_promise" | tr -d '[:space:]')
+            has_promise=${has_promise:-0}
+            if [ "$has_promise" -eq 0 ]; then
+                echo "  ❌ TASK.md has no criteria (checkboxes or promise marker)"
+                echo "     Add criteria like: - [ ] First thing to do"
+                echo "     Or add: <promise>INCOMPLETE</promise>"
+                errors=$((errors + 1))
+            else
+                echo "  ✓ TASK.md has promise marker (alternative completion method)"
+            fi
+        else
+            echo "  ✓ TASK.md has $total criteria ($checked done, $unchecked remaining)"
+        fi
+        
+        # 3. Check TASK.md has a title
+        local has_title
+        has_title=$(tr -d '\r' < "$task_dir/TASK.md" | grep -c '^# ' || echo "0")
+        has_title=$(echo "$has_title" | tr -d '[:space:]')
+        has_title=${has_title:-0}
+        if [ "$has_title" -eq 0 ]; then
+            echo "  ⚠️  TASK.md has no title (# heading)"
+            warnings=$((warnings + 1))
+        else
+            echo "  ✓ TASK.md has title"
+        fi
+        
+        # 4. Check for Phase 0 evidence (recommended)
+        local has_phase0
+        has_phase0=$(tr -d '\r' < "$task_dir/TASK.md" | grep -ci 'phase.0\|pre.*flight\|pre.*work' || echo "0")
+        has_phase0=$(echo "$has_phase0" | tr -d '[:space:]')
+        has_phase0=${has_phase0:-0}
+        if [ "$has_phase0" -eq 0 ]; then
+            echo "  ⚠️  TASK.md may be missing Phase 0 checkpoint"
+            warnings=$((warnings + 1))
+        fi
+    fi
+    
+    # 5. Check progress.md exists
+    if [ ! -f "$task_dir/progress.md" ]; then
+        echo "  ⚠️  progress.md not found (will be created on first run)"
+        warnings=$((warnings + 1))
+    else
+        echo "  ✓ progress.md exists"
+        
+        # Check if progress.md has Phase 0 evidence
+        local progress_has_phase0
+        progress_has_phase0=$(tr -d '\r' < "$task_dir/progress.md" | grep -ci 'phase.0\|rules.read\|\.cursorrules' || echo "0")
+        progress_has_phase0=$(echo "$progress_has_phase0" | tr -d '[:space:]')
+        progress_has_phase0=${progress_has_phase0:-0}
+        if [ "$progress_has_phase0" -gt 0 ]; then
+            echo "  ✓ progress.md contains Phase 0 evidence"
+        fi
+    fi
+    
+    # 6. Check .iteration file
+    if [ ! -f "$task_dir/.iteration" ]; then
+        echo "  ⚠️  .iteration not found (will be created on first run)"
+        warnings=$((warnings + 1))
+    else
+        local iter
+        iter=$(tr -d '\r' < "$task_dir/.iteration" | tr -d '[:space:]')
+        iter=${iter:-0}
+        echo "  ✓ .iteration exists (current: $iter)"
+    fi
+    
+    # 7. Check guardrails.md at workspace level
+    if [ ! -f "$guardrails_file" ]; then
+        echo "  ⚠️  guardrails.md not found at workspace level"
+        warnings=$((warnings + 1))
+    else
+        echo "  ✓ guardrails.md exists"
+    fi
+    
+    echo ""
+    echo "─────────────────────────────────────────────────────"
+    echo "Summary: $errors error(s), $warnings warning(s)"
+    echo "─────────────────────────────────────────────────────"
+    
+    if [ $errors -gt 0 ]; then
+        echo ""
+        echo "❌ Validation FAILED - fix errors before running Ralph"
+        return 1
+    elif [ $warnings -gt 0 ]; then
+        echo ""
+        echo "⚠️  Validation passed with warnings"
+        return 0
+    else
+        echo ""
+        echo "✓ Validation PASSED"
+        return 0
+    fi
+}
+
+function validate_all_tasks() {
+    echo "╔════════════════════════════════════════════════════╗"
+    echo "║     Validating All Active Tasks                    ║"
+    echo "╚════════════════════════════════════════════════════╝"
+    echo ""
+    
+    local total_errors=0
+    local total_warnings=0
+    local task_count=0
+    
+    for task_dir in "$ACTIVE_DIR"/*; do
+        [ -d "$task_dir" ] || continue
+        task_count=$((task_count + 1))
+        
+        local task_name=$(basename "$task_dir")
+        echo "─────────────────────────────────────────────────────"
+        echo "Task: $task_name"
+        echo "─────────────────────────────────────────────────────"
+        
+        # Quick validation
+        local errors=0
+        local warnings=0
+        
+        if [ ! -f "$task_dir/TASK.md" ]; then
+            echo "  ❌ Missing TASK.md"
+            errors=$((errors + 1))
+        else
+            local checkbox_count
+            checkbox_count=$(tr -d '\r' < "$task_dir/TASK.md" | grep -cE '\[ \]|\[x\]' || echo "0")
+            checkbox_count=$(echo "$checkbox_count" | tr -d '[:space:]')
+            
+            if [ "$checkbox_count" -eq 0 ]; then
+                local has_promise
+                has_promise=$(tr -d '\r' < "$task_dir/TASK.md" | grep -c '<promise>' || echo "0")
+                if [ "$has_promise" -eq 0 ]; then
+                    echo "  ❌ No criteria"
+                    errors=$((errors + 1))
+                else
+                    echo "  ✓ Valid (promise marker)"
+                fi
+            else
+                echo "  ✓ Valid ($checkbox_count criteria)"
+            fi
+        fi
+        
+        [ ! -f "$task_dir/progress.md" ] && warnings=$((warnings + 1))
+        [ ! -f "$task_dir/.iteration" ] && warnings=$((warnings + 1))
+        
+        total_errors=$((total_errors + errors))
+        total_warnings=$((total_warnings + warnings))
+        echo ""
+    done
+    
+    echo "═══════════════════════════════════════════════════════"
+    echo "Total: $task_count tasks, $total_errors errors, $total_warnings warnings"
+    echo "═══════════════════════════════════════════════════════"
+    
+    [ $total_errors -gt 0 ] && return 1
+    return 0
+}
+
 # Main
 case "${1:-}" in
     list)
@@ -202,6 +413,13 @@ case "${1:-}" in
     resume)
         [ -z "${2:-}" ] && show_usage && exit 1
         resume_task "$2"
+        ;;
+    validate)
+        if [ -z "${2:-}" ]; then
+            validate_all_tasks
+        else
+            validate_task "$2"
+        fi
         ;;
     *)
         show_usage

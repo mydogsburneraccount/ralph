@@ -109,7 +109,7 @@ aider --version
 
 ### Ralph Script for Aider
 
-**Implemented!** See `.ralph/scripts/ralph-aider.sh` - ready to use.
+**Implemented!** See `.ralph/backends/aider/ralph-aider.sh` - ready to use.
 
 ---
 
@@ -272,7 +272,7 @@ MODEL="sonnet"  # or "haiku" for cheaper, "opus" for better
 # Check prerequisites
 if [ ! -d "$TASK_DIR" ]; then
     echo "❌ Task '$TASK_NAME' not found at $TASK_DIR"
-    echo "Create it first: ./.ralph/scripts/ralph-task-manager.sh create $TASK_NAME"
+    echo "Create it first: ./.ralph/core/scripts/ralph-task-manager.sh create $TASK_NAME"
     exit 1
 fi
 

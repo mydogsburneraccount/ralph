@@ -54,7 +54,7 @@ docker exec -it vault vault kv put secret/ralph/corporate-api-key \
 
 ```bash
 # From Yggdrasil/WSL
-./.ralph/scripts/ralph-secrets.sh get ralph/github-token
+./.ralph/core/scripts/ralph-secrets.sh get ralph/github-token
 
 # Should output your token
 ```
@@ -65,17 +65,17 @@ docker exec -it vault vault kv put secret/ralph/corporate-api-key \
 
 ```bash
 # In any Ralph script
-GH_TOKEN=$(./.ralph/scripts/ralph-secrets.sh get ralph/github-token)
+GH_TOKEN=$(./.ralph/core/scripts/ralph-secrets.sh get ralph/github-token)
 export GITHUB_TOKEN="$GH_TOKEN"
 
 # Or inline
-gh auth login --with-token <<< "$(./.ralph/scripts/ralph-secrets.sh get ralph/github-token)"
+gh auth login --with-token <<< "$(./.ralph/core/scripts/ralph-secrets.sh get ralph/github-token)"
 ```
 
 ### List All Secrets
 
 ```bash
-./.ralph/scripts/ralph-secrets.sh list
+./.ralph/core/scripts/ralph-secrets.sh list
 ```
 
 ### Set New Secret
@@ -131,9 +131,9 @@ Add to beginning of script:
 
 ```bash
 # Load secrets from Vault
-if command -v ./.ralph/scripts/ralph-secrets.sh &> /dev/null; then
-    export GITHUB_TOKEN=$(./.ralph/scripts/ralph-secrets.sh get ralph/github-token 2>/dev/null || true)
-    export ANTHROPIC_API_KEY=$(./.ralph/scripts/ralph-secrets.sh get ralph/anthropic-key 2>/dev/null || true)
+if command -v ./.ralph/core/scripts/ralph-secrets.sh &> /dev/null; then
+    export GITHUB_TOKEN=$(./.ralph/core/scripts/ralph-secrets.sh get ralph/github-token 2>/dev/null || true)
+    export ANTHROPIC_API_KEY=$(./.ralph/core/scripts/ralph-secrets.sh get ralph/anthropic-key 2>/dev/null || true)
 fi
 ```
 
@@ -142,7 +142,7 @@ fi
 ```bash
 # Ensure GitHub token is loaded
 if [ -z "$GITHUB_TOKEN" ]; then
-    GITHUB_TOKEN=$(./.ralph/scripts/ralph-secrets.sh get ralph/github-token)
+    GITHUB_TOKEN=$(./.ralph/core/scripts/ralph-secrets.sh get ralph/github-token)
 fi
 
 gh auth login --with-token <<< "$GITHUB_TOKEN"

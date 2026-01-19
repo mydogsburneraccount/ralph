@@ -1,9 +1,9 @@
 #!/bin/bash
 # ============================================================================
 # Ralph Autonomous Loop - GitHub Copilot CLI Backend
-# 
+#
 # UNTESTED - Requires active GitHub Copilot license to run
-# 
+#
 # Run this for CLI-only autonomous development using corporate-approved
 # GitHub Copilot instead of Aider + Anthropic API.
 #
@@ -43,7 +43,7 @@ case "$RALPH_COPILOT_MODEL" in
         IS_PREMIUM=true
         MODEL_DISPLAY="GPT-5 (premium)"
         ;;
-    
+
     # Free tier models (0x multiplier - don't count against quota)
     gpt-4o)
         COPILOT_MODEL="gpt-4o"
@@ -65,7 +65,7 @@ case "$RALPH_COPILOT_MODEL" in
         IS_PREMIUM=false
         MODEL_DISPLAY="GPT-5-codex-mini (free tier, code-optimized)"
         ;;
-    
+
     # Unknown model - pass through with warning (flexible mode)
     *)
         COPILOT_MODEL="$RALPH_COPILOT_MODEL"
@@ -174,7 +174,7 @@ check_copilot_cli() {
         COPILOT_CMD="copilot"
         return 0
     fi
-    
+
     # Fall back to gh copilot extension (deprecated but may work)
     if command -v gh &> /dev/null && gh copilot --help &> /dev/null 2>&1; then
         COPILOT_CMD="gh copilot"
@@ -182,7 +182,7 @@ check_copilot_cli() {
         echo "   Consider installing: npm install -g @github/copilot"
         return 0
     fi
-    
+
     echo "❌ Copilot CLI not found"
     echo ""
     echo "Install with one of:"
@@ -209,7 +209,7 @@ check_github_auth() {
         echo "ℹ️  Using copilot-cli. If not authenticated, run: copilot /login"
         return 0
     fi
-    
+
     # For gh copilot, check gh auth
     if ! gh auth status &> /dev/null; then
         echo "❌ Not authenticated with GitHub"
@@ -242,7 +242,7 @@ log_premium_request() {
     local iteration=$1
     local model=$2
     local is_premium=$3
-    
+
     if [ "$is_premium" = "true" ]; then
         echo "[$(date '+%Y-%m-%d %H:%M:%S')] Iteration $iteration: model=$model PREMIUM" >> "$PREMIUM_LOG"
     else
@@ -269,14 +269,15 @@ check_stuck() {
     local current_criterion
     current_criterion=$(get_next_criterion)
     local last_criterion
-    last_criterion=$(cat "$LAST_CRITERION_FILE" 2>/dev/null || echo "")
-    
+    last_criterion=$(tr -d '\r' < "$LAST_CRITERION_FILE" 2>/dev/null || echo "")
+
     if [ "$current_criterion" = "$last_criterion" ] && [ -n "$current_criterion" ]; then
         local stuck_count
-        stuck_count=$(cat "$STUCK_COUNT_FILE" 2>/dev/null || echo "0")
+        stuck_count=$(tr -d '\r' < "$STUCK_COUNT_FILE" 2>/dev/null | tr -d '[:space:]' || echo "0")
+        stuck_count=${stuck_count:-0}
         stuck_count=$((stuck_count + 1))
         echo "$stuck_count" > "$STUCK_COUNT_FILE"
-        
+
         if [ $stuck_count -ge $STUCK_THRESHOLD ]; then
             echo "STUCK"
             return
@@ -285,7 +286,7 @@ check_stuck() {
         # New criterion, reset counter
         echo "0" > "$STUCK_COUNT_FILE"
     fi
-    
+
     echo "$current_criterion" > "$LAST_CRITERION_FILE"
     echo "OK"
 }
@@ -295,7 +296,7 @@ build_prompt() {
     local iteration=$1
     local next_criterion
     next_criterion=$(get_next_criterion)
-    
+
     cat << EOF
 Start Ralph iteration $iteration for task: $TASK_NAME
 
@@ -319,9 +320,9 @@ EOF
 # Run copilot with CLI wrapping (fallback mode)
 run_copilot_cli() {
     local prompt="$1"
-    
+
     echo "Running Copilot CLI (standard mode)..."
-    
+
     # For new copilot-cli
     if [ "$COPILOT_CMD" = "copilot" ]; then
         # Use --model flag if available, otherwise default
@@ -329,7 +330,7 @@ run_copilot_cli() {
         echo "$prompt" | $COPILOT_CMD --model "$COPILOT_MODEL" 2>&1
         return $?
     fi
-    
+
     # For deprecated gh copilot
     echo "$prompt" | $COPILOT_CMD suggest 2>&1
     return $?
@@ -338,13 +339,13 @@ run_copilot_cli() {
 # Run copilot with ACP mode (experimental)
 run_copilot_acp() {
     local prompt="$1"
-    
+
     echo "Running Copilot ACP mode (experimental)..."
-    
+
     # ACP mode uses structured JSON communication
     # Note: This is based on research - actual implementation may need adjustment
     # See: https://github.com/github/copilot-cli/issues?q=acp
-    
+
     if [ "$COPILOT_CMD" = "copilot" ]; then
         # Start ACP session and send message
         # This is a placeholder - actual ACP protocol may differ
@@ -352,7 +353,7 @@ run_copilot_acp() {
         run_copilot_cli "$prompt"
         return $?
     fi
-    
+
     echo "❌ ACP mode requires new copilot-cli, not gh copilot"
     return 1
 }
@@ -362,7 +363,7 @@ run_copilot_with_retry() {
     local prompt="$1"
     local max_retries=3
     local retry_delays=(5 15 30)
-    
+
     for attempt in $(seq 0 $((max_retries - 1))); do
         # Choose mode based on configuration
         if [ "$RALPH_COPILOT_USE_ACP" = "true" ]; then
@@ -371,11 +372,11 @@ run_copilot_with_retry() {
             run_copilot_cli "$prompt"
         fi
         local exit_code=$?
-        
+
         if [ $exit_code -eq 0 ]; then
             return 0
         fi
-        
+
         # Check for rate limit
         if [ $attempt -lt $((max_retries - 1)) ]; then
             local delay=${retry_delays[$attempt]}
@@ -384,7 +385,7 @@ run_copilot_with_retry() {
             sleep $delay
         fi
     done
-    
+
     echo "❌ Copilot call failed after $max_retries attempts"
     return 1
 }
@@ -393,7 +394,9 @@ run_copilot_with_retry() {
 # MAIN LOOP
 # ============================================================================
 
-ITERATION=$(cat "$ITERATION_FILE" 2>/dev/null || echo "0")
+# Strip CRLF to handle Windows line endings
+ITERATION=$(tr -d '\r' < "$ITERATION_FILE" 2>/dev/null | tr -d '[:space:]' || echo "0")
+ITERATION=${ITERATION:-0}
 
 echo "╔════════════════════════════════════════════════════╗"
 echo "║  Ralph Wiggum - COPILOT BACKEND (Corporate)        ║"
@@ -416,14 +419,14 @@ sleep 2
 while [ $ITERATION -lt $MAX_ITERATIONS ]; do
     ITERATION=$((ITERATION + 1))
     echo "$ITERATION" > "$ITERATION_FILE"
-    
+
     echo ""
     echo "═══════════════════════════════════════════════════"
     echo "Task: $TASK_NAME | Iteration $ITERATION / $MAX_ITERATIONS | Model: $MODEL_DISPLAY"
     echo "Started: $(date '+%Y-%m-%d %H:%M:%S')"
     echo "═══════════════════════════════════════════════════"
     echo ""
-    
+
     # Check for stuck condition
     STUCK_STATUS=$(check_stuck)
     if [ "$STUCK_STATUS" = "STUCK" ]; then
@@ -433,36 +436,36 @@ while [ $ITERATION -lt $MAX_ITERATIONS ]; do
         echo "   Criterion: $(get_next_criterion)"
         echo ""
         echo "Adding to guardrails and stopping..."
-        
+
         # Add to guardrails
         echo "" >> "$GUARDRAILS_FILE"
         echo "### Sign: Criterion stuck at iteration $ITERATION" >> "$GUARDRAILS_FILE"
         echo "- **Trigger**: Working on: $(get_next_criterion)" >> "$GUARDRAILS_FILE"
         echo "- **Instruction**: Manual intervention needed - criterion could not be completed" >> "$GUARDRAILS_FILE"
         echo "- **Added after**: Iteration $ITERATION - stuck threshold reached" >> "$GUARDRAILS_FILE"
-        
+
         echo "[$(date '+%Y-%m-%d %H:%M:%S')] STUCK on criterion: $(get_next_criterion)" >> "$ACTIVITY_LOG"
         break
     fi
-    
+
     # Log to activity log
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] Iteration $ITERATION started (model: $COPILOT_MODEL)" >> "$ACTIVITY_LOG"
-    
+
     # Log premium request
     log_premium_request $ITERATION "$COPILOT_MODEL" "$IS_PREMIUM"
-    
+
     # Build and run prompt
     PROMPT=$(build_prompt $ITERATION)
-    
+
     run_copilot_with_retry "$PROMPT"
     EXIT_CODE=$?
-    
+
     if [ $EXIT_CODE -ne 0 ]; then
         echo ""
         echo "⚠️  Iteration $ITERATION failed with exit code $EXIT_CODE"
         echo "Logged to $ACTIVITY_LOG"
         echo "[$(date '+%Y-%m-%d %H:%M:%S')] Iteration $ITERATION failed (exit $EXIT_CODE)" >> "$ACTIVITY_LOG"
-        
+
         # If ACP mode failed and fallback enabled, retry with CLI mode
         if [ "$RALPH_COPILOT_USE_ACP" = "true" ] && [ "$RALPH_COPILOT_FALLBACK" = "true" ]; then
             echo "🔄 Falling back to CLI mode..."
@@ -472,12 +475,17 @@ while [ $ITERATION -lt $MAX_ITERATIONS ]; do
     else
         echo "[$(date '+%Y-%m-%d %H:%M:%S')] Iteration $ITERATION completed" >> "$ACTIVITY_LOG"
     fi
-    
+
     # Check if task is complete
-    UNCHECKED=$(grep -c '\[ \]' "$TASK_FILE" || echo "0")
-    CHECKED=$(grep -c '\[x\]' "$TASK_FILE" || echo "0")
+    # Strip CRLF to handle Windows line endings
+    UNCHECKED=$(tr -d '\r' < "$TASK_FILE" | grep -c '\[ \]' || echo "0")
+    CHECKED=$(tr -d '\r' < "$TASK_FILE" | grep -c '\[x\]' || echo "0")
+    UNCHECKED=$(echo "$UNCHECKED" | tr -d '[:space:]')
+    CHECKED=$(echo "$CHECKED" | tr -d '[:space:]')
+    UNCHECKED=${UNCHECKED:-0}
+    CHECKED=${CHECKED:-0}
     TOTAL=$((UNCHECKED + CHECKED))
-    
+
     if [ "$UNCHECKED" = "0" ]; then
         echo ""
         echo "✅ TASK COMPLETE! All criteria checked off."
@@ -486,7 +494,7 @@ while [ $ITERATION -lt $MAX_ITERATIONS ]; do
         echo "[$(date '+%Y-%m-%d %H:%M:%S')] Task completed! $CHECKED/$TOTAL criteria" >> "$ACTIVITY_LOG"
         break
     fi
-    
+
     echo ""
     echo "Progress: $CHECKED / $TOTAL criteria complete ($UNCHECKED remaining)"
     echo "Continuing to next iteration..."

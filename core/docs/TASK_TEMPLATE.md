@@ -181,7 +181,7 @@ If this task causes issues:
 
 ```bash
 # Rollback all changes
-./.ralph/scripts/ralph-rollback.sh <task-name>
+./.ralph/core/scripts/ralph-rollback.sh <task-name>
 ```
 
 ---

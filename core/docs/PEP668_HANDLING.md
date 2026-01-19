@@ -87,7 +87,7 @@ The base toolset now:
 3. Installs libraries via system packages (preferred) or pip
 
 ```bash
-sudo ./.ralph/scripts/ralph-base-toolset.sh
+sudo ./.ralph/core/scripts/ralph-base-toolset.sh
 ```
 
 ### Dependency Helper
