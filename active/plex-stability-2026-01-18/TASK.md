@@ -73,12 +73,12 @@ dependencies:
 
 **Location: Flippanet server via SSH**
 
-- [ ] Check Plex container status: `ssh -i ~/.ssh/flippanet flippadip@flippanet "docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}' | grep plex"` shows plex running
-- [ ] Get current transcoder settings: `ssh -i ~/.ssh/flippanet flippadip@flippanet "cat /var/lib/docker/volumes/flippanet_plex-config/_data/Library/Application\ Support/Plex\ Media\ Server/Preferences.xml | grep -oP '(Transcoder|HardwareAccelerated|Background|Scheduled)[^\"]*=\"[^\"]*\"' | head -20"` returns current settings
-- [ ] Check hardware transcoding availability: `ssh -i ~/.ssh/flippanet flippadip@flippanet "docker exec plex ls -la /dev/dri 2>/dev/null || echo 'No GPU devices found'"` shows GPU status
-- [ ] Get system resources: `ssh -i ~/.ssh/flippanet flippadip@flippanet "free -h && nproc && df -h /mnt/media"` shows available RAM, CPUs, and disk space
-- [ ] Check current Plex logs for errors: `ssh -i ~/.ssh/flippanet flippadip@flippanet "docker logs plex 2>&1 | tail -100 | grep -iE 'error|warn|fail|transcode' | head -30"` identifies any existing issues
-- [ ] Document findings: Add "Phase 1: Current Configuration Assessment" to progress.md
+- [x] Check Plex container status: `ssh -i ~/.ssh/flippanet flippadip@flippanet "docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}' | grep plex"` shows plex running
+- [x] Get current transcoder settings: Via `docker exec plex cat Preferences.xml` - TranscoderQuality=3, FSEventLibraryPartialScanEnabled=1
+- [x] Check hardware transcoding availability: **NO GPU in container** - `/dev/dri` missing, all transcoding CPU-based
+- [x] Get system resources: 62GB RAM (58GB avail), 8 CPUs, 15TB disk (4.2TB free), **swap exhausted (8GB/8GB)**
+- [x] Check current Plex logs for errors: Only `libusb_init failed` (benign), no transcoding errors
+- [x] Document findings: Added "Phase 1: Current Configuration Assessment" to progress.md
 
 ---
 

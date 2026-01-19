@@ -108,6 +108,58 @@ Optimize Plex Media Server on flippanet for reliability under concurrent load:
 ## Completed Work
 
 - [x] Phase 0: Verification Gate - Rules read, context gathered, files created
+- [x] Phase 1: Assess Current Plex Configuration - Assessment complete
+
+---
+
+## Phase 1: Current Configuration Assessment (Iteration 1)
+
+### Container Status
+- Plex container: `Up 6 hours` (`network_mode: host`, no port mapping)
+- Container ID: `6fa02363c4cc`
+- Image: `lscr.io/linuxserver/plex:latest`
+
+### System Resources
+| Resource | Value | Notes |
+|----------|-------|-------|
+| RAM | 62GB total, 58GB available | Plenty of headroom |
+| **Swap** | **8.0GB/8.0GB used** | ⚠️ Exhausted - past memory pressure |
+| CPUs | 8 threads (i7-7700K) | 4 cores HT |
+| Disk | 15TB, 4.2TB free (71%) | Healthy |
+
+### Current Plex Settings (Preferences.xml)
+| Setting | Current Value | Recommended | Status |
+|---------|--------------|-------------|--------|
+| `TranscoderQuality` | 3 (highest) | 0 (speed) | ❌ Needs change |
+| `TranscoderH264BackgroundPreset` | medium | fast | ⚠️ Could improve |
+| `TranscoderHEVCEncodingMode` | hevc-sources | - | OK |
+| `TranscoderToneMapping` | 1 | 1 | ✅ Enabled |
+| `FSEventLibraryPartialScanEnabled` | 1 | 1 | ✅ Already optimal |
+| `FSEventLibraryUpdatesEnabled` | 1 | 1 | ✅ Already optimal |
+| `allowedNetworks` | 192.168.110.0/24,100.0.0.0/8,172.16.0.0/12 | - | ✅ Includes Tailscale |
+| `secureConnections` | 2 | 2 | ✅ Secure |
+| `BackgroundQueueIdlePaused` | (not set) | 1 | ❌ Needs adding |
+| `ScheduledLibraryUpdateInterval` | (not set) | 1800 | ⚠️ Consider adding |
+
+### Hardware Transcoding Status
+**⚠️ CRITICAL: GPU not available in container**
+- `HardwareDevicePath="10de:2208:10de:1535@0000:01:00.0"` (NVIDIA RTX 3080 Ti configured)
+- BUT `/dev/dri` does NOT exist in container
+- All transcoding currently CPU-based on 4C/8T i7-7700K
+
+This is a significant performance issue. Hardware transcoding requires:
+1. NVIDIA container runtime
+2. `--gpus all` or device passthrough in docker-compose
+
+### Plex Logs
+- `libusb_init failed` - Benign, documented as ignorable
+- No transcoding errors in recent logs
+
+### Issues to Address
+1. **TranscoderQuality=3** → Change to 0 (prefer speed)
+2. **Add BackgroundQueueIdlePaused=1** → Pause background during playback
+3. **GPU passthrough missing** → Manual step for user (docker-compose change)
+4. **Swap exhausted** → Informational, may need investigation if issues persist
 
 ---
 
