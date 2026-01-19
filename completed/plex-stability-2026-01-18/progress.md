@@ -123,11 +123,13 @@ Optimize Plex Media Server on flippanet for reliability under concurrent load:
 ## Phase 1: Current Configuration Assessment (Iteration 1)
 
 ### Container Status
+
 - Plex container: `Up 6 hours` (`network_mode: host`, no port mapping)
 - Container ID: `6fa02363c4cc`
 - Image: `lscr.io/linuxserver/plex:latest`
 
 ### System Resources
+
 | Resource | Value | Notes |
 |----------|-------|-------|
 | RAM | 62GB total, 58GB available | Plenty of headroom |
@@ -136,6 +138,7 @@ Optimize Plex Media Server on flippanet for reliability under concurrent load:
 | Disk | 15TB, 4.2TB free (71%) | Healthy |
 
 ### Current Plex Settings (Preferences.xml)
+
 | Setting | Current Value | Recommended | Status |
 |---------|--------------|-------------|--------|
 | `TranscoderQuality` | 3 (highest) | 0 (speed) | ❌ Needs change |
@@ -150,20 +153,25 @@ Optimize Plex Media Server on flippanet for reliability under concurrent load:
 | `ScheduledLibraryUpdateInterval` | (not set) | 1800 | ⚠️ Consider adding |
 
 ### Hardware Transcoding Status
+
 **⚠️ CRITICAL: GPU not available in container**
+
 - `HardwareDevicePath="10de:2208:10de:1535@0000:01:00.0"` (NVIDIA RTX 3080 Ti configured)
 - BUT `/dev/dri` does NOT exist in container
 - All transcoding currently CPU-based on 4C/8T i7-7700K
 
 This is a significant performance issue. Hardware transcoding requires:
+
 1. NVIDIA container runtime
 2. `--gpus all` or device passthrough in docker-compose
 
 ### Plex Logs
+
 - `libusb_init failed` - Benign, documented as ignorable
 - No transcoding errors in recent logs
 
 ### Issues to Address
+
 1. ~~**TranscoderQuality=3** → Change to 0 (prefer speed)~~ ✅ Fixed in Phase 2
 2. ~~**Add BackgroundQueueIdlePaused=1** → Pause background during playback~~ ✅ Fixed in Phase 2
 3. **GPU passthrough missing** → Manual step for user (docker-compose change)
@@ -181,11 +189,13 @@ This is a significant performance issue. Hardware transcoding requires:
 | `BackgroundQueueIdlePaused` | (not set) | 1 (enabled) | Background tasks pause during playback |
 
 ### Verified Settings
+
 - `/transcode` already mounted as 32GB tmpfs - no disk I/O for transcoding
 - TranscoderH264BackgroundPreset remains "medium" (acceptable)
 - FSEventLibraryPartialScanEnabled already enabled
 
 ### Backup Created
+
 - `Preferences.xml.backup-20260118` at `/config/Library/Application Support/Plex Media Server/`
 
 **Note**: Changes require Plex restart to take effect (will be done in Phase 8)
@@ -195,14 +205,17 @@ This is a significant performance issue. Hardware transcoding requires:
 ## Phase 3: Library Scan Optimization (Iteration 1)
 
 ### Current State (Already Optimal)
+
 - `FSEventLibraryPartialScanEnabled="1"` - Incremental scans for new files
 - `FSEventLibraryUpdatesEnabled="1"` - File system events trigger updates
 - `OnDeckWindow="4"` - 4-day window for On Deck
 
 ### Changes Applied
+
 - Added `ScheduledLibraryUpdateInterval="3600"` - Full library scans every 1 hour (instead of more frequent default)
 
 ### Why No Thumbnail Generation Changes
+
 - `BackgroundQueueIdlePaused=1` (from Phase 2) already pauses ALL background tasks during active playback
 - This includes thumbnail generation, intro detection, chapter markers
 - No need to separately configure each task's schedule
@@ -212,6 +225,7 @@ This is a significant performance issue. Hardware transcoding requires:
 ## Phase 4: Network Optimization (Iteration 1)
 
 ### Current State (Already Good)
+
 - `allowedNetworks="192.168.110.0/24,100.0.0.0/8,172.16.0.0/12"` includes:
   - Local LAN (192.168.110.0/24)
   - Tailscale mesh VPN (100.0.0.0/8)
@@ -219,9 +233,11 @@ This is a significant performance issue. Hardware transcoding requires:
 - `secureConnections="2"` - Secure connections preferred
 
 ### Changes Applied
+
 - Added `RelayEnabled="0"` - Disables Plex Relay
 
 ### Why Disable Relay
+
 - Tailscale provides direct mesh VPN connections
 - Relay adds latency by bouncing through Plex servers
 - With Relay disabled, all connections go directly via Tailscale
@@ -232,19 +248,23 @@ This is a significant performance issue. Hardware transcoding requires:
 ## Phase 5: Database Optimization (Iteration 1)
 
 ### Database Status
+
 | File | Size | Status |
 |------|------|--------|
 | `com.plexapp.plugins.library.db` | 41MB | Healthy |
 | `com.plexapp.plugins.library.blobs.db` | 47MB | Healthy |
 
 ### Auto-Maintenance Active
+
 Plex is maintaining automatic backups:
+
 - `*.db-2026-01-07` (oldest)
 - `*.db-2026-01-10`
 - `*.db-2026-01-13`
 - `*.db-2026-01-16` (most recent)
 
 ### Decision: No Manual Optimization
+
 - Database sizes are reasonable (not bloated)
 - Auto-maintenance is running correctly
 - Manual optimization risks corruption if run during activity
@@ -272,6 +292,7 @@ Plex is maintaining automatic backups:
 ### Decision: No Plex Resource Limits
 
 Setting memory/CPU limits on Plex would be counterproductive:
+
 - Plex uses minimal resources when idle
 - During transcoding, Plex NEEDS CPU and memory headroom
 - Limiting Plex would cause transcoding failures under load
@@ -280,6 +301,7 @@ Setting memory/CPU limits on Plex would be counterproductive:
 ### Recommendation for Future Task
 
 Create separate task `qbittorrent-memory-2026-01-XX` to:
+
 1. Investigate why qBittorrent uses 28GB RAM
 2. Check libtorrent settings (memory allocation, cache)
 3. Set appropriate memory limits in docker-compose
@@ -290,17 +312,20 @@ Create separate task `qbittorrent-memory-2026-01-XX` to:
 ## Phase 7: Tautulli Monitoring (Iteration 1)
 
 ### Tautulli Status
+
 - Container: Up 4 days (healthy)
 - Connected to Plex: `flippanet` (192.168.110.149:32400)
 - Plex Version: 1.42.2.10156-f737b826c
 - API: Working (key: 66451...)
 
 ### Notification Agents
+
 - Count: 0 (none configured)
 - This is expected - notification setup requires manual configuration (Discord webhooks, etc.)
 - See "Manual Steps" section in TASK.md for setup instructions
 
 ### Monitoring Capabilities Available
+
 - Stream history and statistics
 - Buffer/transcode event logging
 - User activity tracking
@@ -311,6 +336,7 @@ Create separate task `qbittorrent-memory-2026-01-XX` to:
 ## Phase 8: Restart Verification (Iteration 1)
 
 ### Restart Sequence
+
 1. `docker stop plex` - Graceful shutdown (9 seconds)
 2. Wait 5 seconds for cleanup
 3. `docker start plex` - Container started
@@ -318,6 +344,7 @@ Create separate task `qbittorrent-memory-2026-01-XX` to:
 5. Verify health via `/identity` endpoint
 
 ### Post-Restart Verification
+
 | Setting | Expected | Actual | Status |
 |---------|----------|--------|--------|
 | TranscoderQuality | 0 | 0 | ✅ |
@@ -326,6 +353,7 @@ Create separate task `qbittorrent-memory-2026-01-XX` to:
 | RelayEnabled | 0 | 0 | ✅ |
 
 ### Health Check
+
 - Plex API responding at `http://localhost:32400/identity`
 - machineIdentifier: `9e8c53e840b93feefc35b69ec594f9479d8b0422`
 - Only benign error: `libusb_init failed` (documented as ignorable)
@@ -335,9 +363,11 @@ Create separate task `qbittorrent-memory-2026-01-XX` to:
 ## Phase 9: Documentation Complete (Iteration 1)
 
 ### Created Files
+
 - `_data/PLEX_STABILITY.md` - Comprehensive stability documentation
 
 ### Documentation Contents
+
 - Summary of all changes applied
 - Architecture context and resource contention points
 - Known issues (GPU passthrough, qBittorrent memory)
@@ -350,17 +380,20 @@ Create separate task `qbittorrent-memory-2026-01-XX` to:
 ## Task Summary
 
 ### Changes Applied to Plex
+
 1. **TranscoderQuality**: 3 → 0 (prefer speed)
 2. **BackgroundQueueIdlePaused**: Added (pause during playback)
 3. **ScheduledLibraryUpdateInterval**: Added (1 hour)
 4. **RelayEnabled**: Added (disabled, use Tailscale)
 
 ### Key Discoveries
+
 - GPU not passed through to container (CPU-only transcoding)
 - qBittorrent using 28GB RAM (45%) - root cause of swap exhaustion
 - Tautulli monitoring active but no notification agents
 
 ### Recommendations for Future
+
 1. Enable GPU passthrough for hardware transcoding
 2. Investigate qBittorrent memory usage (separate task)
 3. Configure Tautulli notification agents (manual)

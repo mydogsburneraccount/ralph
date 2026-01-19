@@ -178,6 +178,7 @@ Apply all configuration changes and verify stability.
 - [x] Document restart: Added "Phase 8: Restart Verification" to progress.md
 
 **Verified Settings Post-Restart:**
+
 - TranscoderQuality="0" ✓
 - BackgroundQueueIdlePaused="1" ✓
 - ScheduledLibraryUpdateInterval="3600" ✓

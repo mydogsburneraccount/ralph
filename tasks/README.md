@@ -1,52 +1,35 @@
-# Ralph Task Archive
+# Ralph Task Templates
 
-This directory stores completed and historical Ralph tasks for reference.
+This directory contains reusable Ralph task templates for `ralph-loop`.
 
-## Structure
+## How to Use
 
-Each task is stored as a markdown file with a descriptive name:
+Each `.md` file contains:
+1. Task overview and context
+2. The `/ralph-loop` command to run it
+3. Phased success criteria
+4. Verification commands
 
-```
-.ralph/tasks/
-├── README.md                    # This file
-├── listenarr-docker-fix.md     # Completed: Build/deploy fixed Listenarr image
-└── [future-task-name].md        # Future archived tasks
-```
-
-## Workflow
-
-1. **Active task**: `RALPH_TASK.md` in workspace root (what Ralph is currently working on)
-2. **Completed task**: Move to `.ralph/tasks/[descriptive-name].md` when done
-3. **New task**: Create new `RALPH_TASK.md` in workspace root
-
-## Naming Convention
-
-Use kebab-case with brief description:
-
-- `project-feature-implementation.md`
-- `bug-fix-description.md`
-- `optimization-area.md`
-
-## Purpose
-
-- **Reference**: Look back at what was accomplished
-- **Learning**: Review past task structure and criteria quality
-- **Context**: Understand project history
-- **Reuse**: Copy patterns from successful tasks
-
-## Finding Tasks
+### Running a Task
 
 ```bash
-# List all archived tasks
-ls .ralph/tasks/*.md
-
-# Search task contents
-grep -r "keyword" .ralph/tasks/
-
-# View specific task
-cat .ralph/tasks/listenarr-docker-fix.md
+# Copy the /ralph-loop command from the task file and run it
+/ralph-loop "Execute task X. Read .ralph/tasks/X.md for instructions..." --max-iterations N
 ```
 
-## Current Active Task
+## Available Tasks
 
-See `RALPH_TASK.md` in workspace root for what Ralph is currently working on.
+| Task | Description | Status |
+|------|-------------|--------|
+| `vscode-copilot-corporate-mac.md` | Set up VS Code + Copilot on corporate Mac | Ready |
+
+## Creating New Tasks
+
+Follow this structure:
+1. Clear overview
+2. `/ralph-loop` command block
+3. Phased criteria (verifiable via commands)
+4. Success checklist
+5. References
+
+See existing tasks for examples.

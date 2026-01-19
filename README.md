@@ -1,150 +1,104 @@
-# Ralph Wiggum - Autonomous AI Development Assistant
+# Ralph Knowledge Base
 
-> **"I'm helping! I'm Ralph!"** - Autonomous AI-driven development for multi-day tasks
+> Reference materials for the Ralph Wiggum technique with Claude Code
 
-Ralph Wiggum is an autonomous development framework that enables AI agents to work on complex, multi-day tasks with minimal human intervention. Think of it as "go AFK development" - define your task, let Ralph work, come back to completed features.
+This directory contains **learned knowledge** from previous Ralph work. The actual loop mechanism is now handled by the **ralph-loop plugin** for Claude Code.
 
-## 🎯 Quick Start
+## Quick Start
 
 ```bash
-# 1. Clone the repo
-git clone https://github.com/mydogsburneraccount/ralph.git
-cd ralph
+# Start a Ralph loop (runs in current session)
+/ralph-loop "Your task description. Output <promise>DONE</promise> when complete." --max-iterations 20
 
-# 2. Choose your backend
-cd backends/cursor-agent    # Cursor IDE (recommended for personal use)
-cd backends/copilot-cli     # GitHub Copilot (corporate-approved)
-cd backends/aider           # Anthropic Claude (personal API)
-
-# 3. Run setup
-./setup.sh
-
-# 4. Create and run a task
-../../core/scripts/ralph-task-manager.sh create my-first-task
-../../core/scripts/ralph-autonomous.sh my-first-task
+# Cancel an active loop
+/cancel-ralph
 ```
 
-## 📁 Repository Structure
+## How Ralph Works Now
+
+The ralph-loop plugin uses a **stop hook** to intercept Claude's exit attempts:
+
+1. You run `/ralph-loop "prompt"` once
+2. Claude works on the task, modifying files
+3. Claude tries to exit
+4. Stop hook intercepts, feeds the SAME prompt back
+5. Claude sees its previous work in files/git
+6. Repeats until `<promise>` detected or max iterations
+
+**Key insight**: The loop is "self-referential" because Claude sees its own work in files, not because output feeds back as input.
+
+## Directory Contents
 
 ```
-ralph/
-├── core/                    # Backend-agnostic Ralph core
-│   ├── scripts/            # Core automation scripts
-│   ├── docs/               # Documentation
-│   └── templates/          # Task templates
-│
-├── backends/               # AI backend implementations
-│   ├── cursor-agent/      # Cursor IDE integration
-│   ├── copilot-cli/       # GitHub Copilot CLI
-│   └── aider/             # Aider + Anthropic API
-│
-└── examples/              # Example tasks and use cases
+.ralph/
+├── guardrails.md        # Signs: learned lessons from failures (READ THIS)
+├── core/docs/           # Reference documentation
+│   ├── ANTIPATTERNS.md  # CRITICAL: What NOT to do in prompts
+│   ├── RALPH_RULES.md   # Task writing principles
+│   └── ...
+└── completed/           # Historical task records
 ```
 
-## 🤖 Backends Comparison
+## Writing Good Ralph Prompts
 
-| Backend | Best For | Requires | Corporate OK? | Status |
-|---------|----------|----------|---------------|--------|
-| **cursor-agent** | Personal dev, Cursor users | Cursor IDE license | ⚠️ Maybe | ✅ Tested |
-| **copilot-cli** | Corporate environments | GitHub Copilot license | ✅ Yes | ⚠️ Untested |
-| **aider** | Personal projects, SSH/CLI | Anthropic API key | ❌ No | ⚠️ Untested |
+### The Golden Rule
 
-### Cursor Agent (Recommended for Personal Use)
-- Tightly integrated with Cursor IDE
-- Excellent AI quality (Claude Sonnet)
-- Easiest setup
-- **Use when**: You have Cursor and work on personal projects
+> Can this criterion be verified by running a command?
+> - YES → Valid
+> - NO → Document it as a manual step instead
 
-### GitHub Copilot CLI (Corporate-Approved)
-- Uses company's existing GitHub Copilot contract
-- Data stays in GitHub/Microsoft infrastructure
-- Enterprise audit logging available
-- **Use when**: Working on corporate projects, need compliance
+### Required Elements
 
-### Aider (CLI Alternative)
-- Pure CLI, works over SSH
-- Direct Anthropic API access
-- Good for headless environments
-- **Use when**: No GUI access, personal API key available
+1. **Clear completion criteria** - What "done" looks like
+2. **Promise marker** - `Output <promise>DONE</promise> when complete`
+3. **Iteration limit** - Always use `--max-iterations`
 
-## 🚀 Features
+### Example Prompts
 
-- **Autonomous Loops**: AI works iteratively without human intervention
-- **Multi-Task Support**: Work on multiple tasks simultaneously
-- **Cost Tracking**: Monitor API usage and estimated costs
-- **Context Rotation**: Handle multi-day tasks with automatic summarization
-- **Safety Features**: Automatic branching, rollback capability
-- **Dependency Management**: Automatic installation of required tools
-- **Progress Tracking**: Detailed logs and progress reports
-
-## 📚 Documentation
-
-- [Core Documentation](./core/docs/README.md)
-- [Backend Setup Guides](./backends/README.md)
-- [Task Writing Guide](./core/docs/RALPH_RULES.md)
-- [Quick Reference](./core/docs/QUICKREF.md)
-- [Security & Secrets](./core/docs/SECRET_MANAGEMENT.md)
-
-## 🛠️ Requirements
-
-### All Backends
-- Git
-- Bash (WSL on Windows, native on Mac/Linux)
-- Basic dev tools (curl, jq, etc.)
-
-### Backend-Specific
-- **cursor-agent**: Cursor IDE, cursor-agent CLI
-- **copilot-cli**: GitHub Copilot license, `@github/copilot` npm package
-- **aider**: Python 3.8+, Anthropic API key
-
-## 💡 Example Use Cases
-
-### Personal Development
-```bash
-# Use Cursor backend for personal projects
-cd backends/cursor-agent
-./setup.sh
-ralph-autonomous my-feature-task
+**Simple:**
+```
+/ralph-loop "Fix the failing tests in auth.ts. Run npm test after each change. Output <promise>TESTS PASS</promise> when all tests green." --max-iterations 15
 ```
 
-### Corporate Development
-```bash
-# Use Copilot backend for work projects
-cd backends/copilot-cli
-./setup.sh
-ralph-copilot my-corp-task
+**Complex:**
+```
+/ralph-loop "Implement user authentication:
+
+Phase 1: Add JWT middleware
+Phase 2: Create login/logout endpoints
+Phase 3: Add tests (>80% coverage)
+Phase 4: Update README with API docs
+
+Reference guardrails at .ralph/guardrails.md.
+Run tests after each phase.
+Output <promise>AUTH COMPLETE</promise> when all phases done." --max-iterations 30
 ```
 
-### Headless/SSH Environments
-```bash
-# Use Aider backend for CLI-only
-cd backends/aider
-./setup.sh
-ralph-aider my-server-task
+## Guardrails (Signs)
+
+Before starting any Ralph task, read `.ralph/guardrails.md`. It contains "Signs" - lessons learned from previous failures:
+
+```markdown
+### Sign: Recreate containers after image updates
+- **Trigger**: When deploying a new Docker image version
+- **Instruction**: Use `docker compose down` + `up -d`, not just `restart`
+- **Added after**: Iteration 1 - Container kept using old cached image
 ```
 
-## 🎓 Learning Resources
+**Add new Signs when you encounter failures** - they prevent repeating mistakes.
 
-- [Original Ralph Wiggum Technique](https://ghuntley.com/ralph/) by Geoffrey Huntley
-- [Task Writing Best Practices](./core/docs/RALPH_RULES.md)
-- [Anti-Patterns to Avoid](./core/docs/ANTIPATTERNS.md)
+## Safety
 
-## 🤝 Contributing
+- **Always set `--max-iterations`** - Loops can be expensive ($50-100+ for 50 iterations on large codebases)
+- **Use sandboxing** - Ralph runs with full permissions
+- **Monitor token usage** - Each iteration consumes context
 
-This is a personal tool collection. If you find it useful, feel free to fork and adapt!
+## References
 
-## 📜 License
-
-MIT License - See LICENSE file for details
-
-## 🙏 Credits
-
-- Original Ralph Wiggum technique: [Geoffrey Huntley](https://ghuntley.com)
-- Multi-task enhancements: Ethan (this repo)
-- Copilot backend: Research and implementation by Ralph itself 🤖
+- [Original technique](https://ghuntley.com/ralph/) - Geoffrey Huntley
+- [Ralph Orchestrator](https://github.com/mikeyobrien/ralph-orchestrator) - Multi-backend implementation
+- [Antipatterns](./core/docs/ANTIPATTERNS.md) - What NOT to do
 
 ---
 
-**Status**: Active development
-**Version**: 2.0 (Multi-backend support)
-**Last Updated**: 2026-01-17
+**Note**: Legacy backends (cursor-agent, copilot-cli, aider) archived to `_archive/2026-01-19-ralph-legacy-infrastructure/`. Claude Code with ralph-loop plugin replaces all of them.
