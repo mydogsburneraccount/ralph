@@ -103,11 +103,11 @@ Plex settings can be modified via the Preferences.xml file. Changes require cont
 
 Library scans can cause I/O contention with active streams. Configure for off-peak scanning.
 
-- [ ] Check scheduled tasks current settings: `ssh -i ~/.ssh/flippanet flippadip@flippanet "grep -oP 'ScheduledLibrary[^\"]*=\"[^\"]*\"' /var/lib/docker/volumes/flippanet_plex-config/_data/Library/Application\ Support/Plex\ Media\ Server/Preferences.xml"` returns current schedule
-- [ ] Disable automatic library updates during playback: Set `ScheduledLibraryUpdateInterval` to longer interval (e.g., 1800 = 30 min instead of default)
-- [ ] Configure partial scans: Set `FSEventLibraryPartialScanEnabled` to `1` for efficient incremental updates
-- [ ] Disable thumbnail generation during active streams: Set `GenerateIntroMarkerBehavior` and `GenerateChapterThumbBehavior` to off-peak
-- [ ] Document changes: Add "Phase 3: Library Scan Optimization" to progress.md
+- [x] Check scheduled tasks current settings: FSEventLibraryPartialScanEnabled=1, FSEventLibraryUpdatesEnabled=1, OnDeckWindow=4
+- [x] Disable automatic library updates during playback: Added `ScheduledLibraryUpdateInterval="3600"` (1 hour between full scans)
+- [x] Configure partial scans: Already enabled - `FSEventLibraryPartialScanEnabled="1"`
+- [x] Disable thumbnail generation during active streams: Handled by `BackgroundQueueIdlePaused=1` (all background tasks pause during playback)
+- [x] Document changes: Added "Phase 3: Library Scan Optimization" to progress.md
 
 ---
 

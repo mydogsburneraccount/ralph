@@ -110,6 +110,7 @@ Optimize Plex Media Server on flippanet for reliability under concurrent load:
 - [x] Phase 0: Verification Gate - Rules read, context gathered, files created
 - [x] Phase 1: Assess Current Plex Configuration - Assessment complete
 - [x] Phase 2: Configure Transcoder for Stability - Settings applied
+- [x] Phase 3: Optimize Library Scan Settings - Already optimal + interval added
 
 ---
 
@@ -182,6 +183,23 @@ This is a significant performance issue. Hardware transcoding requires:
 - `Preferences.xml.backup-20260118` at `/config/Library/Application Support/Plex Media Server/`
 
 **Note**: Changes require Plex restart to take effect (will be done in Phase 8)
+
+---
+
+## Phase 3: Library Scan Optimization (Iteration 1)
+
+### Current State (Already Optimal)
+- `FSEventLibraryPartialScanEnabled="1"` - Incremental scans for new files
+- `FSEventLibraryUpdatesEnabled="1"` - File system events trigger updates
+- `OnDeckWindow="4"` - 4-day window for On Deck
+
+### Changes Applied
+- Added `ScheduledLibraryUpdateInterval="3600"` - Full library scans every 1 hour (instead of more frequent default)
+
+### Why No Thumbnail Generation Changes
+- `BackgroundQueueIdlePaused=1` (from Phase 2) already pauses ALL background tasks during active playback
+- This includes thumbnail generation, intro detection, chapter markers
+- No need to separately configure each task's schedule
 
 ---
 
