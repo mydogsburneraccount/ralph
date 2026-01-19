@@ -88,12 +88,12 @@ dependencies:
 
 Plex settings can be modified via the Preferences.xml file. Changes require container restart.
 
-- [ ] Backup current Preferences.xml: `ssh -i ~/.ssh/flippanet flippadip@flippanet "cp /var/lib/docker/volumes/flippanet_plex-config/_data/Library/Application\ Support/Plex\ Media\ Server/Preferences.xml /var/lib/docker/volumes/flippanet_plex-config/_data/Library/Application\ Support/Plex\ Media\ Server/Preferences.xml.backup-\$(date +%Y%m%d)"` succeeds
-- [ ] Set transcoder quality to "Prefer higher speed encoding": Modify `TranscoderQuality` to `0` (speed over quality)
-- [ ] Enable background transcoding throttle: Set `BackgroundQueueIdlePaused` to `1` (pause background tasks when active streams)
-- [ ] Set transcoder temp directory to tmpfs if available: Check `/tmp` or `/dev/shm` for RAM-based transcoding
-- [ ] Limit maximum simultaneous transcodes: Set `TranscoderTempDirectory` and consider `TranscoderH264MaximumSimultaneous` if server is resource-constrained
-- [ ] Document changes: Add "Phase 2: Transcoder Configuration" to progress.md
+- [x] Backup current Preferences.xml: Created `Preferences.xml.backup-20260118` via docker exec
+- [x] Set transcoder quality to "Prefer higher speed encoding": Changed `TranscoderQuality` from 3 to 0
+- [x] Enable background transcoding throttle: Added `BackgroundQueueIdlePaused="1"`
+- [x] Set transcoder temp directory to tmpfs if available: Already using `/transcode` mounted as 32GB tmpfs
+- [x] Limit maximum simultaneous transcodes: Not needed - 8 CPU threads + tmpfs should handle multiple streams
+- [x] Document changes: Added "Phase 2: Transcoder Configuration" to progress.md
 
 ---
 

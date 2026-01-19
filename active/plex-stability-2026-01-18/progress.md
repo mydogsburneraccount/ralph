@@ -109,6 +109,7 @@ Optimize Plex Media Server on flippanet for reliability under concurrent load:
 
 - [x] Phase 0: Verification Gate - Rules read, context gathered, files created
 - [x] Phase 1: Assess Current Plex Configuration - Assessment complete
+- [x] Phase 2: Configure Transcoder for Stability - Settings applied
 
 ---
 
@@ -156,10 +157,31 @@ This is a significant performance issue. Hardware transcoding requires:
 - No transcoding errors in recent logs
 
 ### Issues to Address
-1. **TranscoderQuality=3** → Change to 0 (prefer speed)
-2. **Add BackgroundQueueIdlePaused=1** → Pause background during playback
+1. ~~**TranscoderQuality=3** → Change to 0 (prefer speed)~~ ✅ Fixed in Phase 2
+2. ~~**Add BackgroundQueueIdlePaused=1** → Pause background during playback~~ ✅ Fixed in Phase 2
 3. **GPU passthrough missing** → Manual step for user (docker-compose change)
 4. **Swap exhausted** → Informational, may need investigation if issues persist
+
+---
+
+## Phase 2: Transcoder Configuration (Iteration 1)
+
+### Changes Applied
+
+| Setting | Before | After | Effect |
+|---------|--------|-------|--------|
+| `TranscoderQuality` | 3 (highest quality) | 0 (prefer speed) | Faster transcodes, less CPU |
+| `BackgroundQueueIdlePaused` | (not set) | 1 (enabled) | Background tasks pause during playback |
+
+### Verified Settings
+- `/transcode` already mounted as 32GB tmpfs - no disk I/O for transcoding
+- TranscoderH264BackgroundPreset remains "medium" (acceptable)
+- FSEventLibraryPartialScanEnabled already enabled
+
+### Backup Created
+- `Preferences.xml.backup-20260118` at `/config/Library/Application Support/Plex Media Server/`
+
+**Note**: Changes require Plex restart to take effect (will be done in Phase 8)
 
 ---
 
