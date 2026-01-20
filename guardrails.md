@@ -62,6 +62,11 @@ A "Sign" is a documented lesson learned. Format:
 - **Instruction**: Check what tools are available inside the container before using curl/wget. Minimal Python images often lack curl. Use Python urllib as fallback: `["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen(\\\"http://127.0.0.1:PORT\\\")\""]`
 - **Added after**: Iteration 1 (kapowarr-integration) - curl not found in mrcas/kapowarr image, had to use Python healthcheck
 
+### Sign: Log failures before retrying
+- **Trigger**: When a prompt or task fails
+- **Instruction**: Before retrying, log the failure using the template in `_agent_knowledge/workflows/error-logging-system.md`. Identify the error category and root cause. Patterns emerge from logged failures.
+- **Added after**: Workflow patterns task - implementing error logging system from u/agenticlab1's guide
+
 ---
 
 ## How to Add Signs
