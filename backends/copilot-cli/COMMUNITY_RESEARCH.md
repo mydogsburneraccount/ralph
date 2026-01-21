@@ -345,7 +345,18 @@ Use `/model` to switch between models.
 
 ## Recommendations for Ralph-Copilot Integration
 
-### Immediate Improvements
+### Implementation Status (v3.0.0)
+
+| Pattern | Status | Implementation |
+|---------|--------|----------------|
+| `-p` flag programmatic mode | ✅ Implemented | `run_copilot_programmatic()`, `-p` CLI flag |
+| Custom agent profile | ✅ Implemented | `ralph.agent.md`, `--agent=` flag |
+| Docker sandbox | ✅ Implemented | Dockerfile, docker-compose.yml, `--docker` flag |
+| ACP mode | ✅ Implemented | `run_copilot_acp()`, `--acp` flag, promise parsing |
+| Tool restrictions | ✅ Implemented | `--deny-tool`, `RALPH_COPILOT_DENY_TOOLS` |
+| Wrapper functions | ✅ Implemented | `copilot_here()`, `copilot_yolo()` |
+
+### Original Recommendations (Now Completed)
 
 1. **Switch to `-p` flag** for single-shot execution instead of piping
 2. **Add custom agent profile** encoding Ralph methodology

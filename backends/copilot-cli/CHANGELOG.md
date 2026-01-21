@@ -5,6 +5,55 @@ All notable changes to the Copilot CLI backend will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.0-untested] - 2026-01-21
+
+### Added
+
+- **Programmatic Mode (`-p` flag)**: New execution mode using Copilot CLI's `-p` flag for single-shot execution instead of piping to stdin. More reliable for scripted usage.
+
+- **Docker Sandbox Support**:
+  - New `Dockerfile` with Node.js 20, Git, and Copilot CLI pre-installed
+  - `entrypoint.sh` for user permission alignment between host and container
+  - `docker-compose.yml` with multiple service variants (safe, yolo, agent)
+  - `--docker` CLI flag to run iterations inside container
+  - Safe environment for using `--allow-all-tools`
+
+- **Tool Restriction System**:
+  - `--allow-all-tools` with selective `--deny-tool` restrictions
+  - `RALPH_COPILOT_DENY_TOOLS` environment variable for configurable restrictions
+  - Default denies: `shell(cd)`, `shell(rm -rf)`, `fetch`, `websearch`
+
+- **Custom Agent Profile**:
+  - `ralph.agent.md` encoding Ralph methodology as Copilot custom agent
+  - YAML frontmatter with tools specification (read, search, edit, shell)
+  - Ralph protocol documentation (TASK.md, guardrails, promises)
+  - `--agent=<name>` CLI flag for agent selection
+  - Installation instructions for user and repo-level agents
+
+- **Wrapper Functions**:
+  - `copilot_here()` - Interactive mode with confirmations
+  - `copilot_yolo()` - Allow-all-tools mode (use with Docker!)
+
+- **Enhanced ACP Mode**:
+  - `--acp` CLI flag for experimental Agent Client Protocol mode
+  - `parse_acp_promise()` function for JSON response promise extraction
+  - `RALPH_COPILOT_ACP` environment variable alias
+  - Documented as experimental and undocumented
+
+### Changed
+
+- **Version**: Bumped from 2.0.0-untested to 3.0.0-untested
+- **Help Text**: Comprehensive update with new flags, examples, and wrapper functions
+- **Execution Mode Display**: Shows Docker/ACP/Programmatic/Standard mode in startup banner
+- **ACP Function**: Enhanced with JSON request formatting and promise parsing
+
+### Documentation
+
+- Updated help text with v3 features
+- Docker usage instructions in docker-compose.yml
+- Agent installation instructions in ralph.agent.md
+- COMMUNITY_RESEARCH.md with implementation patterns
+
 ## [2.0.0-untested] - 2026-01-21
 
 ### Added

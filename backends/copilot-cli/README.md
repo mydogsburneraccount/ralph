@@ -2,6 +2,8 @@
 
 Uses GitHub Copilot CLI for autonomous development in corporate environments.
 
+**Version**: 3.0.0-untested | **Status**: Implementation complete, runtime testing required
+
 ## When to Use This Backend
 
 ✅ **Best for:**
@@ -19,6 +21,7 @@ Uses GitHub Copilot CLI for autonomous development in corporate environments.
 - Active **GitHub Copilot license** (Individual, Business, or Enterprise)
 - GitHub CLI (`gh`) installed and authenticated
 - `@github/copilot` npm package OR new `copilot` CLI
+- Docker (optional, for sandbox mode)
 
 ## Setup
 
@@ -59,9 +62,53 @@ nano ~/.ralph/active/my-task/TASK.md
 # Run with Copilot backend
 ./ralph-copilot.sh my-task
 
+# With programmatic mode (-p flag)
+./ralph-copilot.sh my-task -p
+
+# With Docker sandbox (recommended for --allow-all-tools)
+./ralph-copilot.sh my-task --docker
+
+# With custom agent profile
+./ralph-copilot.sh my-task --agent=ralph
+
 # Specify model
-RALPH_COPILOT_MODEL=claude ./ralph-copilot.sh my-task
-RALPH_COPILOT_MODEL=gpt ./ralph-copilot.sh my-task
+RALPH_COPILOT_MODEL=claude-sonnet ./ralph-copilot.sh my-task
+```
+
+## Docker Sandbox (v3.0 Feature)
+
+Run Copilot safely with `--allow-all-tools` inside an isolated container:
+
+```bash
+# Build the sandbox image
+docker build -t ralph-copilot-sandbox .
+
+# Run with Docker sandbox
+./ralph-copilot.sh my-task --docker
+
+# Or use docker-compose directly
+docker compose run --rm ralph-copilot-yolo
+```
+
+The Docker sandbox limits blast radius while enabling full tool access.
+
+## Custom Agent Profile (v3.0 Feature)
+
+Install the Ralph agent profile for Copilot:
+
+```bash
+# User-level (all projects)
+mkdir -p ~/.copilot/agents
+cp ralph.agent.md ~/.copilot/agents/
+
+# Repository-level
+mkdir -p .github/agents
+cp ralph.agent.md .github/agents/
+```
+
+Then use with:
+```bash
+./ralph-copilot.sh my-task --agent=ralph
 ```
 
 ## Environment Variables
@@ -76,6 +123,11 @@ RALPH_COPILOT_MODEL=gpt            # GPT-5
 RALPH_COPILOT_FALLBACK=false       # Disable model fallback
 RALPH_COPILOT_AUTO_APPROVE=true    # Auto-approve safe operations
 RALPH_COPILOT_USE_ACP=false        # Use ACP mode (experimental)
+
+# v3.0 options
+RALPH_COPILOT_USE_DOCKER=true      # Run inside Docker sandbox
+RALPH_COPILOT_DOCKER_IMAGE=<img>   # Custom Docker image name
+RALPH_COPILOT_DENY_TOOLS=<list>    # Comma-separated tools to deny
 ```
 
 ## Corporate Compliance

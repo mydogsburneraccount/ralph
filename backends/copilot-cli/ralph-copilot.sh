@@ -22,7 +22,7 @@
 set -euo pipefail
 
 WORKSPACE=$(pwd)
-SCRIPT_VERSION="2.0.0-untested"
+SCRIPT_VERSION="3.0.0-untested"
 
 # ============================================================================
 # MODEL CONFIGURATION
@@ -95,7 +95,19 @@ RALPH_COPILOT_FALLBACK="${RALPH_COPILOT_FALLBACK:-false}"
 RALPH_COPILOT_AUTO_APPROVE="${RALPH_COPILOT_AUTO_APPROVE:-true}"
 
 # Use ACP mode for programmatic control (experimental)
+# Note: ACP (Agent Client Protocol) is experimental and undocumented as of Jan 2026
 RALPH_COPILOT_USE_ACP="${RALPH_COPILOT_USE_ACP:-false}"
+RALPH_COPILOT_ACP="${RALPH_COPILOT_ACP:-$RALPH_COPILOT_USE_ACP}"  # Alias for compatibility
+
+# Tool restrictions for --allow-all-tools mode (comma-separated)
+# Default denies dangerous operations: directory changes, dangerous rm, network access
+RALPH_COPILOT_DENY_TOOLS="${RALPH_COPILOT_DENY_TOOLS:-shell(cd),shell(rm -rf),fetch,websearch}"
+
+# Use Docker sandbox for isolated execution
+RALPH_COPILOT_USE_DOCKER="${RALPH_COPILOT_USE_DOCKER:-false}"
+
+# Docker image name
+RALPH_COPILOT_DOCKER_IMAGE="${RALPH_COPILOT_DOCKER_IMAGE:-ralph-copilot-sandbox}"
 
 # ============================================================================
 # ARGUMENT PARSING (Claude Code compatible flags)
@@ -103,7 +115,7 @@ RALPH_COPILOT_USE_ACP="${RALPH_COPILOT_USE_ACP:-false}"
 
 show_help() {
     cat << 'HELP_EOF'
-Ralph Copilot Backend - Autonomous development loop using GitHub Copilot CLI
+Ralph Copilot Backend v3 - Autonomous development loop using GitHub Copilot CLI
 
 USAGE:
   ./ralph-copilot.sh <task-name> [OPTIONS]
@@ -117,12 +129,19 @@ OPTIONS:
   --guardrails <file>            File to inject into prompt each iteration
   --progress <file>              File to log iteration progress (injected each iteration)
   --stuck-threshold <n>          Warn after N iterations with no file changes (default: 3)
+  --docker                       Run Copilot inside Docker sandbox (safe for --allow-all-tools)
+  --agent=<name>                 Use custom agent profile (default: ralph)
+  --acp                          Use experimental ACP mode for programmatic control
+  -p                             Use programmatic mode (single-shot, -p flag to copilot)
   -h, --help                     Show this help message
 
 ENVIRONMENT VARIABLES:
   RALPH_COPILOT_MODEL=<model>       Model to use (default: gpt-4o)
   RALPH_COPILOT_FALLBACK=true|false Fallback to CLI mode if ACP fails
   RALPH_COPILOT_USE_ACP=true|false  Use experimental ACP mode
+  RALPH_COPILOT_DENY_TOOLS=<list>   Comma-separated tools to deny (with --allow-all-tools)
+  RALPH_COPILOT_USE_DOCKER=true     Run inside Docker sandbox
+  RALPH_COPILOT_DOCKER_IMAGE=<img>  Docker image name (default: ralph-copilot-sandbox)
 
   Premium models (count against quota):
     claude-sonnet, claude, gpt-5
@@ -133,12 +152,31 @@ ENVIRONMENT VARIABLES:
     gpt-4.1, gpt-5-mini
 
 EXAMPLES:
+  # Basic usage
   ./ralph-copilot.sh my-task
   ./ralph-copilot.sh my-task --max-iterations 10
+
+  # With completion promise
   ./ralph-copilot.sh my-task --completion-promise 'DONE' --max-iterations 25
-  ./ralph-copilot.sh my-task --guardrails .ralph/guardrails.md
-  ./ralph-copilot.sh my-task --progress progress.md --stuck-threshold 5
+
+  # With guardrails and progress
+  ./ralph-copilot.sh my-task --guardrails .ralph/guardrails.md --progress progress.md
+
+  # Using Docker sandbox (recommended for --allow-all-tools)
+  ./ralph-copilot.sh my-task --docker
+
+  # Using custom agent profile
+  ./ralph-copilot.sh my-task --agent=ralph
+
+  # Using programmatic mode with tool restrictions
+  RALPH_COPILOT_DENY_TOOLS='shell(cd),shell(rm -rf),fetch' ./ralph-copilot.sh my-task -p
+
+  # Using premium model
   RALPH_COPILOT_MODEL=claude-sonnet ./ralph-copilot.sh my-task
+
+WRAPPER FUNCTIONS (in bash/zsh):
+  copilot_here     - Interactive Copilot with confirmations
+  copilot_yolo     - Copilot with --allow-all-tools (use with Docker!)
 
 COMPLETION PROMISE:
   When --completion-promise is set, the loop checks Copilot's output for:
@@ -156,6 +194,9 @@ COMPLETION_PROMISE=""
 GUARDRAILS_FILE=""
 PROGRESS_FILE_ARG=""
 STUCK_THRESHOLD=3
+USE_DOCKER=false
+USE_PROGRAMMATIC=false
+CUSTOM_AGENT=""
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
@@ -216,6 +257,22 @@ while [[ $# -gt 0 ]]; do
             STUCK_THRESHOLD="$2"
             shift 2
             ;;
+        --docker)
+            USE_DOCKER=true
+            shift
+            ;;
+        --agent=*)
+            CUSTOM_AGENT="${1#--agent=}"
+            shift
+            ;;
+        --acp)
+            RALPH_COPILOT_USE_ACP=true
+            shift
+            ;;
+        -p)
+            USE_PROGRAMMATIC=true
+            shift
+            ;;
         -*)
             echo "Error: Unknown option: $1" >&2
             echo "Use --help for usage information" >&2
@@ -233,6 +290,11 @@ while [[ $# -gt 0 ]]; do
             ;;
     esac
 done
+
+# Apply environment variable overrides for Docker
+if [[ "$RALPH_COPILOT_USE_DOCKER" = "true" ]]; then
+    USE_DOCKER=true
+fi
 
 if [[ -z "$TASK_NAME" ]]; then
     echo "Ralph Copilot Backend v$SCRIPT_VERSION"
@@ -555,16 +617,84 @@ detect_promise() {
     fi
 }
 
-# Run copilot with CLI wrapping (fallback mode)
+# Build deny-tool arguments from RALPH_COPILOT_DENY_TOOLS
+build_deny_tool_args() {
+    local deny_tools_str="$1"
+    local args=""
+
+    if [[ -z "$deny_tools_str" ]]; then
+        echo ""
+        return
+    fi
+
+    # Split by comma and build --deny-tool arguments
+    IFS=',' read -ra TOOLS <<< "$deny_tools_str"
+    for tool in "${TOOLS[@]}"; do
+        # Trim whitespace
+        tool=$(echo "$tool" | xargs)
+        if [[ -n "$tool" ]]; then
+            args="$args --deny-tool '$tool'"
+        fi
+    done
+
+    echo "$args"
+}
+
+# Run copilot with programmatic mode (-p flag)
+run_copilot_programmatic() {
+    local prompt="$1"
+
+    echo "Running Copilot CLI (programmatic mode with -p flag)..."
+
+    if [[ "$COPILOT_CMD" != "copilot" ]]; then
+        echo "Error: Programmatic mode requires new copilot-cli, not gh copilot" >&2
+        return 1
+    fi
+
+    # Build deny-tool arguments
+    local deny_args
+    deny_args=$(build_deny_tool_args "$RALPH_COPILOT_DENY_TOOLS")
+
+    # Build full command with tool permissions
+    local cmd="$COPILOT_CMD -p \"$prompt\" --model \"$COPILOT_MODEL\" --allow-all-tools"
+
+    # Add agent if specified
+    if [[ -n "$CUSTOM_AGENT" ]]; then
+        cmd="$cmd --agent=$CUSTOM_AGENT"
+    fi
+
+    # Add deny-tool restrictions
+    if [[ -n "$deny_args" ]]; then
+        cmd="$cmd $deny_args"
+    fi
+
+    # Execute with eval to handle quoted arguments properly
+    eval "$cmd" 2>&1
+    return $?
+}
+
+# Run copilot with CLI wrapping (standard interactive mode)
 run_copilot_cli() {
     local prompt="$1"
+
+    # Use programmatic mode if -p flag was passed
+    if [[ "$USE_PROGRAMMATIC" = "true" ]]; then
+        run_copilot_programmatic "$prompt"
+        return $?
+    fi
 
     echo "Running Copilot CLI (standard mode)..."
 
     # For new copilot-cli
     if [[ "$COPILOT_CMD" = "copilot" ]]; then
+        # Build command with optional agent
+        local cmd="$COPILOT_CMD --model \"$COPILOT_MODEL\""
+        if [[ -n "$CUSTOM_AGENT" ]]; then
+            cmd="$cmd --agent=$CUSTOM_AGENT"
+        fi
+
         # Capture output for promise detection
-        echo "$prompt" | $COPILOT_CMD --model "$COPILOT_MODEL" 2>&1
+        echo "$prompt" | eval "$cmd" 2>&1
         return $?
     fi
 
@@ -573,20 +703,182 @@ run_copilot_cli() {
     return $?
 }
 
+# Parse promise from ACP JSON response
+# ACP returns structured JSON, so we need to extract content differently
+parse_acp_promise() {
+    local output="$1"
+    local expected="$2"
+
+    if [[ -z "$expected" ]]; then
+        echo "NO_PROMISE_SET"
+        return
+    fi
+
+    # Try to extract content from JSON response
+    local content
+    content=$(echo "$output" | jq -r '.content // .text // .message // empty' 2>/dev/null || echo "$output")
+
+    # Fall back to full output if jq fails
+    if [[ -z "$content" ]]; then
+        content="$output"
+    fi
+
+    # Now check for promise tag in content
+    local promise_text
+    promise_text=$(echo "$content" | perl -0777 -pe 's/.*?<promise>(.*?)<\/promise>.*/$1/s; s/^\s+|\s+$//g; s/\s+/ /g' 2>/dev/null || echo "")
+
+    if [[ -n "$promise_text" ]] && [[ "$promise_text" = "$expected" ]]; then
+        echo "PROMISE_FULFILLED"
+    else
+        echo "NO_MATCH"
+    fi
+}
+
 # Run copilot with ACP mode (experimental)
+# ACP = Agent Client Protocol - undocumented but supported via --acp flag
 run_copilot_acp() {
     local prompt="$1"
 
     echo "Running Copilot ACP mode (experimental)..."
+    echo "Note: ACP mode is experimental and undocumented - use with caution"
 
-    if [[ "$COPILOT_CMD" = "copilot" ]]; then
-        echo "Warning: ACP mode not yet implemented - falling back to CLI mode"
-        run_copilot_cli "$prompt"
-        return $?
+    if [[ "$COPILOT_CMD" != "copilot" ]]; then
+        echo "Error: ACP mode requires new copilot-cli, not gh copilot" >&2
+        return 1
     fi
 
-    echo "Error: ACP mode requires new copilot-cli, not gh copilot" >&2
-    return 1
+    # Check if jq is available for JSON handling
+    if ! command -v jq &>/dev/null; then
+        echo "Warning: jq not found - ACP response parsing may be limited" >&2
+    fi
+
+    # ACP mode uses JSON-based structured communication
+    # This is experimental and subject to change
+    local acp_request
+    acp_request=$(cat <<EOF
+{
+  "type": "user_message",
+  "content": $(echo "$prompt" | jq -Rs .)
+}
+EOF
+)
+
+    # Run with ACP flag and capture structured output
+    local output
+    output=$($COPILOT_CMD --acp --model "$COPILOT_MODEL" <<< "$acp_request" 2>&1)
+    local exit_code=$?
+
+    # Display the output (may be JSON)
+    echo "$output"
+
+    # If we have a completion promise, check ACP response
+    if [[ -n "$COMPLETION_PROMISE" ]] && [[ $exit_code -eq 0 ]]; then
+        local acp_promise_status
+        acp_promise_status=$(parse_acp_promise "$output" "$COMPLETION_PROMISE")
+        if [[ "$acp_promise_status" = "PROMISE_FULFILLED" ]]; then
+            echo ""
+            echo "ACP: Promise detected in response"
+        fi
+    fi
+
+    return $exit_code
+}
+
+# Run copilot inside Docker sandbox
+run_copilot_docker() {
+    local prompt="$1"
+
+    echo "Running Copilot CLI in Docker sandbox..."
+
+    local docker_image="${RALPH_COPILOT_DOCKER_IMAGE:-ralph-copilot-sandbox}"
+
+    # Check if image exists
+    if ! docker image inspect "$docker_image" &>/dev/null; then
+        echo "Error: Docker image '$docker_image' not found" >&2
+        echo ""
+        echo "Build it with:"
+        echo "  cd $(dirname "$0")"
+        echo "  docker build -t $docker_image ."
+        return 1
+    fi
+
+    # Get current user/group for permission alignment
+    local uid=$(id -u)
+    local gid=$(id -g)
+
+    # Build deny-tool arguments for YOLO mode
+    local deny_args=""
+    if [[ -n "$RALPH_COPILOT_DENY_TOOLS" ]]; then
+        deny_args=$(build_deny_tool_args "$RALPH_COPILOT_DENY_TOOLS")
+    fi
+
+    # Build copilot command for inside container
+    local copilot_cmd="copilot -p \"\$PROMPT\" --model \"$COPILOT_MODEL\" --allow-all-tools"
+    if [[ -n "$CUSTOM_AGENT" ]]; then
+        copilot_cmd="$copilot_cmd --agent=$CUSTOM_AGENT"
+    fi
+    if [[ -n "$deny_args" ]]; then
+        copilot_cmd="$copilot_cmd $deny_args"
+    fi
+
+    # Run in Docker with:
+    # - Volume mount of current task directory to /work
+    # - GitHub token passed as environment variable
+    # - User permission alignment
+    # - Interactive mode for terminal
+    docker run --rm -it \
+        -v "$(pwd):/work" \
+        -w /work \
+        -e "PROMPT=$prompt" \
+        -e "GH_TOKEN=${GH_TOKEN:-}" \
+        -e "GITHUB_TOKEN=${GITHUB_TOKEN:-}" \
+        -u "$uid:$gid" \
+        "$docker_image" \
+        bash -c "$copilot_cmd" 2>&1
+
+    return $?
+}
+
+# Wrapper function: copilot_here (safe mode with confirmations)
+# To use, source this script and call copilot_here
+copilot_here() {
+    local prompt="${1:-}"
+    if [[ -z "$prompt" ]]; then
+        echo "Usage: copilot_here 'your prompt here'"
+        return 1
+    fi
+
+    if [[ "$COPILOT_CMD" = "copilot" ]]; then
+        $COPILOT_CMD -p "$prompt" --model "${COPILOT_MODEL:-gpt-4o}" 2>&1
+    else
+        echo "$prompt" | $COPILOT_CMD suggest 2>&1
+    fi
+}
+
+# Wrapper function: copilot_yolo (allow-all-tools mode)
+# WARNING: Use with Docker sandbox for safety!
+copilot_yolo() {
+    local prompt="${1:-}"
+    if [[ -z "$prompt" ]]; then
+        echo "Usage: copilot_yolo 'your prompt here'"
+        echo "WARNING: This enables --allow-all-tools. Use with Docker sandbox!"
+        return 1
+    fi
+
+    if [[ "$COPILOT_CMD" != "copilot" ]]; then
+        echo "Error: copilot_yolo requires new copilot-cli, not gh copilot" >&2
+        return 1
+    fi
+
+    local deny_args
+    deny_args=$(build_deny_tool_args "${RALPH_COPILOT_DENY_TOOLS:-shell(cd),shell(rm -rf),fetch,websearch}")
+
+    local cmd="$COPILOT_CMD -p \"$prompt\" --model \"${COPILOT_MODEL:-gpt-4o}\" --allow-all-tools"
+    if [[ -n "$deny_args" ]]; then
+        cmd="$cmd $deny_args"
+    fi
+
+    eval "$cmd" 2>&1
 }
 
 # Run copilot with retry logic, capturing output
@@ -597,8 +889,10 @@ run_copilot_with_retry() {
     local output=""
 
     for attempt in $(seq 0 $((max_retries - 1))); do
-        # Choose mode based on configuration
-        if [[ "$RALPH_COPILOT_USE_ACP" = "true" ]]; then
+        # Choose mode based on configuration (priority: Docker > ACP > CLI)
+        if [[ "$USE_DOCKER" = "true" ]]; then
+            output=$(run_copilot_docker "$prompt" | tee /dev/tty)
+        elif [[ "$RALPH_COPILOT_USE_ACP" = "true" ]]; then
             output=$(run_copilot_acp "$prompt" | tee /dev/tty)
         else
             output=$(run_copilot_cli "$prompt" | tee /dev/tty)
@@ -638,10 +932,16 @@ echo "Task: $TASK_NAME"
 echo "Task directory: $TASK_DIR"
 echo "Model: $MODEL_DISPLAY"
 echo "Copilot CLI: $COPILOT_CMD"
-echo "ACP Mode: $RALPH_COPILOT_USE_ACP"
+echo "Execution mode: $(if [[ "$USE_DOCKER" = "true" ]]; then echo "Docker sandbox"; elif [[ "$RALPH_COPILOT_USE_ACP" = "true" ]]; then echo "ACP (experimental)"; elif [[ "$USE_PROGRAMMATIC" = "true" ]]; then echo "Programmatic (-p)"; else echo "Standard"; fi)"
+if [[ -n "$CUSTOM_AGENT" ]]; then
+    echo "Custom agent: $CUSTOM_AGENT"
+fi
 echo "Max iterations: $MAX_ITERATIONS"
 echo "Stuck threshold: $STUCK_THRESHOLD"
 echo "Completion promise: ${COMPLETION_PROMISE:-none}"
+if [[ -n "$RALPH_COPILOT_DENY_TOOLS" ]]; then
+    echo "Denied tools: $RALPH_COPILOT_DENY_TOOLS"
+fi
 echo "Starting autonomous loop..."
 echo ""
 echo "Press Ctrl+C to stop at any time"

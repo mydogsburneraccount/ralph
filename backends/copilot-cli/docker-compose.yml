@@ -1,0 +1,69 @@
+# Ralph Copilot Sandbox Docker Compose
+#
+# Provides easy orchestration for running Copilot CLI in a sandboxed environment.
+#
+# Usage:
+#   docker compose run --rm copilot -p "your prompt"
+#   docker compose run --rm copilot_yolo  # with --allow-all-tools
+#
+# Environment:
+#   GH_TOKEN or GITHUB_TOKEN - GitHub authentication (required for Copilot)
+#   COPILOT_MODEL - Model to use (default: gpt-4o)
+
+version: "3.8"
+
+services:
+  # Base Copilot service - interactive mode with confirmations
+  ralph-copilot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ralph-copilot-sandbox:latest
+    container_name: ralph-copilot
+    working_dir: /work
+    volumes:
+      - ./:/work
+    environment:
+      - GH_TOKEN=${GH_TOKEN:-}
+      - GITHUB_TOKEN=${GITHUB_TOKEN:-}
+      - COPILOT_MODEL=${COPILOT_MODEL:-gpt-4o}
+    stdin_open: true
+    tty: true
+
+  # Copilot with --allow-all-tools (YOLO mode)
+  # Safe because container is isolated
+  ralph-copilot-yolo:
+    extends:
+      service: ralph-copilot
+    container_name: ralph-copilot-yolo
+    command: >
+      copilot -p "${PROMPT:-Help me with this task}"
+      --model "${COPILOT_MODEL:-gpt-4o}"
+      --allow-all-tools
+      --deny-tool 'shell(cd)'
+      --deny-tool 'shell(rm -rf)'
+      --deny-tool 'fetch'
+      --deny-tool 'websearch'
+
+  # Copilot programmatic mode
+  ralph-copilot-programmatic:
+    extends:
+      service: ralph-copilot
+    container_name: ralph-copilot-programmatic
+    command: >
+      copilot -p "${PROMPT:-Complete the current task}"
+      --model "${COPILOT_MODEL:-gpt-4o}"
+
+  # Copilot with custom Ralph agent profile
+  ralph-copilot-agent:
+    extends:
+      service: ralph-copilot
+    container_name: ralph-copilot-agent
+    volumes:
+      - ./:/work
+      - ./ralph.agent.md:/root/.copilot/agents/ralph.agent.md:ro
+    command: >
+      copilot -p "${PROMPT:-Continue the Ralph task}"
+      --model "${COPILOT_MODEL:-gpt-4o}"
+      --agent=ralph
+      --allow-all-tools
